@@ -1,0 +1,64 @@
+{
+  "name": "ci-cd-toolbox",
+  "version": "1.0.0",
+  "description": "Studio DevOps & Utilitaire de Diagnostic CI/CD Multi-Stacks avec Auto-Correction IA Hybride (Gemini, OpenAI, APIs Gratuites, Ollama Local), Synchronisation E2EE et Mode Offline Complet.",
+  "type": "module",
+  "bin": {
+    "ci-cd-toolbox": "./bin/ci-cd-toolbox.js",
+    "cicd-doctor": "./bin/ci-cd-toolbox.js"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n \"SERVER,STUDIO\" -c \"cyan,magenta\" \"tsx watch server/index.ts\" \"vite\"",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:client": "vite",
+    "build": "tsc -b && vite build",
+    "start": "node bin/ci-cd-toolbox.js start",
+    "scan": "node bin/ci-cd-toolbox.js scan",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "pack:toolbox": "npm run build && npm pack"
+  },
+  "keywords": [
+    "ci-cd",
+    "devops",
+    "diagnostics",
+    "auto-fix",
+    "ai-coding",
+    "gemini",
+    "openai",
+    "ollama",
+    "e2ee",
+    "offline-first",
+    "toolbox"
+  ],
+  "author": "hrmonic",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hrmonic/ci-cd-toolbox.git"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "lucide-react": "^0.475.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.4",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "postcss": "^8.5.2",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0",
+    "vitest": "^3.0.5"
+  }
+}
