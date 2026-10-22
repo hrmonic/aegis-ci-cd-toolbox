@@ -82,7 +82,7 @@ async function runCli() {
   if (command === 'init') {
     const configPath = path.join(targetPath, '.cicd-toolbox.json');
     const defaultConfig = {
-      $schema: 'https://github.com/hrmonic/ci-cd-toolbox/schema.json',
+      $schema: 'https://github.com/hrmonic/aegis-ci-cd-toolbox/schema.json',
       projectName: path.basename(targetPath),
       createdAt: new Date().toISOString(),
       autoDetectStacks: true,

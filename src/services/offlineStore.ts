@@ -164,7 +164,7 @@ export function buildOfflineFallbackReport(stacks: StackId[]): ScanReport {
     selectedStacks: stacks,
     gitInfo: {
       branch: 'main',
-      remoteUrl: 'https://github.com/hrmonic/ci-cd-toolbox.git',
+      remoteUrl: 'https://github.com/hrmonic/aegis-ci-cd-toolbox.git',
       hasUncommitted: false,
     },
     categoryScores: [

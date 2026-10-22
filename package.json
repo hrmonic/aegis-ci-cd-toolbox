@@ -39,7 +39,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hrmonic/ci-cd-toolbox.git"
+    "url": "https://github.com/hrmonic/aegis-ci-cd-toolbox.git"
   },
   "dependencies": {
     "cors": "^2.8.5",
