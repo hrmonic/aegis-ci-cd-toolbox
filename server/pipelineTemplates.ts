@@ -115,35 +115,35 @@ export function generateGitHubActionsWorkflow(stacks: StackId[]): string {
 
   if (hasNode) {
     jobs.push(`  node-quality-and-tests:
-    name: "🛡️ Node.js / TypeScript — Qualité, Typage & Tests"
+    name: "Node.js / TypeScript — Quality, Types & Tests"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout du code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configuration Node.js 22 LTS avec Cache
+      - name: Setup Node.js 22 LTS
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
 
-      - name: Installation reproductible des dépendances
+      - name: Install dependencies
         run: npm ci
 
-      - name: Vérification statique du typage (Anti-Bug IA)
+      - name: Static typecheck & lint
         run: npm run lint --if-present
 
-      - name: Exécution des tests unitaires et d'intégration
+      - name: Run unit & integration tests
         run: npm test --if-present
 
-      - name: Vérification du build de production
+      - name: Verify production build
         run: npm run build --if-present`);
   }
 
   if (hasPython) {
     jobs.push(`  python-ci:
-    name: "🐍 Python — Ruff, Mypy & Pytest"
+    name: "Python — Ruff, Mypy & Pytest"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -152,19 +152,19 @@ export function generateGitHubActionsWorkflow(stacks: StackId[]): string {
         with:
           python-version: "3.12"
           cache: "pip"
-      - name: Installation des dépendances et outils QA
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip ruff pytest
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      - name: Analyse statique Ruff
+      - name: Ruff static analysis
         run: ruff check .
-      - name: Suite de tests Pytest
+      - name: Pytest suite
         run: pytest`);
   }
 
   if (hasPhp) {
     jobs.push(`  php-symfony-ci:
-    name: "🐘 PHP / Symfony — Composer, PHPStan & PHPUnit"
+    name: "PHP / Symfony — Composer, PHPStan & PHPUnit"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -173,17 +173,17 @@ export function generateGitHubActionsWorkflow(stacks: StackId[]): string {
         with:
           php-version: "8.3"
           coverage: none
-      - name: Validation de composer.json
+      - name: Validate composer.json
         run: composer validate --strict
-      - name: Installation des dépendances Composer
+      - name: Install Composer dependencies
         run: composer install --prefer-dist --no-progress
-      - name: Exécution des tests PHPUnit
+      - name: Run PHPUnit tests
         run: vendor/bin/phpunit`);
   }
 
   if (hasGo) {
     jobs.push(`  go-ci:
-    name: "🐹 Go — Vet & Race Detector Tests"
+    name: "Go — Vet & Race Detector"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -197,7 +197,7 @@ export function generateGitHubActionsWorkflow(stacks: StackId[]): string {
 
   if (hasRust) {
     jobs.push(`  rust-ci:
-    name: "🦀 Rust — Clippy Strict & Cargo Test"
+    name: "Rust — Clippy Strict & Cargo Test"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -212,12 +212,12 @@ export function generateGitHubActionsWorkflow(stacks: StackId[]): string {
 
   if (hasDocker) {
     jobs.push(`  docker-hardening-check:
-    name: "🐳 Docker — Validation du Build Multi-Stage"
+    name: "Docker — Multi-Stage Build Validation"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Vérification de la présence d'un Dockerfile sécurisé
+      - name: Verify Dockerfile build
         run: |
           if [ -f Dockerfile ]; then
             docker build --no-cache -t aegis-ci-check:local .
@@ -226,15 +226,15 @@ export function generateGitHubActionsWorkflow(stacks: StackId[]): string {
 
   if (jobs.length === 0) {
     jobs.push(`  baseline-security-check:
-    name: "🔒 Audit de Sécurité & Intégrité"
+    name: "Security & Integrity Audit"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Pipeline CI/CD Aegis actif"`);
+      - run: echo "CI/CD pipeline active"`);
   }
 
-  return `name: "🛡️ Aegis CI/CD — Qualité, Sécurité & Zéro-Bug IA"
+  return `name: "CI/CD Pipeline — Quality & Security"
 
 on:
   push:

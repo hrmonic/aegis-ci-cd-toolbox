@@ -2,9 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile, exec } from 'node:child_process';
 import {
   scanProject,
   applyAutoFixOnDisk,
+  listProjectBackups,
+  rollbackLastFixOnDisk,
   detectProjectStacks,
   STACK_CATALOG,
 } from './scanner.ts';
@@ -20,21 +23,19 @@ const PORT = Number(process.env.PORT || 4177);
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
-// Determine default target directory
 const targetArgIdx = process.argv.indexOf('--target');
 const DEFAULT_TARGET_DIR =
   targetArgIdx !== -1 && process.argv[targetArgIdx + 1]
     ? path.resolve(process.argv[targetArgIdx + 1])
     : process.cwd();
 
-// Local Encrypted Vault Store (stores only zero-knowledge AES-256-GCM ciphertext envelopes)
 const VAULT_FILE = path.join(DEFAULT_TARGET_DIR, '.ci-cd-toolbox-cache', 'e2ee-sync-vault.json');
 
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
     service: 'Aegis CI/CD Toolbox Engine',
-    defaultTargetDir: DEFAULT_TARGET_DIR,
+    defaultTargetDir: DEFAULT_TARGET_DIR.replace(/\\/g, '/'),
     timestamp: new Date().toISOString(),
   });
 });
@@ -43,7 +44,171 @@ app.get('/api/stacks', (_req, res) => {
   res.json({ stacks: STACK_CATALOG });
 });
 
-// Inspect any external project path on the machine (Zero-Footprint External Targeting)
+// ============================================================================
+// 1. NATIVE OS FOLDER PICKER DIALOG (WINDOWS EXPLORER DIALOG)
+// ============================================================================
+app.post('/api/fs/pick-native', (req, res) => {
+  const initialDir = req.body?.initialDir
+    ? path.resolve(req.body.initialDir)
+    : DEFAULT_TARGET_DIR;
+
+  const psScript = `
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+$owner = New-Object System.Windows.Forms.Form
+$owner.TopMost = $true
+$owner.Width = 0
+$owner.Height = 0
+$owner.FormBorderStyle = 'None'
+$owner.StartPosition = 'CenterScreen'
+$owner.ShowInTaskbar = $false
+$owner.Opacity = 0
+$owner.Show()
+$owner.Activate()
+
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = "Sélectionnez le dossier du projet à auditer avec Aegis CI/CD Studio"
+$dialog.ShowNewFolderButton = $false
+if (Test-Path -LiteralPath "${initialDir.replace(/"/g, '')}") {
+  $dialog.SelectedPath = "${initialDir.replace(/"/g, '')}"
+}
+$result = $dialog.ShowDialog($owner)
+$owner.Close()
+if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+  Write-Output $dialog.SelectedPath
+}
+`;
+
+  execFile(
+    'powershell.exe',
+    ['-NoProfile', '-STA', '-Command', psScript],
+    { timeout: 120000 },
+    (err, stdout) => {
+      if (err) {
+        res.json({ cancelled: true, error: err.message });
+        return;
+      }
+      const picked = stdout.trim();
+      if (!picked) {
+        res.json({ cancelled: true });
+        return;
+      }
+      const normalized = picked.replace(/\\/g, '/');
+      const detectedStacks = detectProjectStacks(picked);
+      res.json({
+        cancelled: false,
+        projectPath: normalized,
+        projectName: path.basename(picked),
+        detectedStacks,
+      });
+    }
+  );
+});
+
+// ============================================================================
+// 2. VISUAL FILE SYSTEM EXPLORER API (DRIVES & DIRECTORIES)
+// ============================================================================
+app.get('/api/fs/drives', (_req, res) => {
+  const drives: { name: string; path: string }[] = [];
+  for (const letter of ['C', 'D', 'E', 'F', 'G', 'H']) {
+    const drivePath = `${letter}:/`;
+    try {
+      if (fs.existsSync(drivePath)) {
+        drives.push({ name: `Disque Local (${letter}:)`, path: drivePath });
+      }
+    } catch {
+      // Ignore inaccessible drives
+    }
+  }
+  res.json({ drives });
+});
+
+app.post('/api/fs/browse', (req, res) => {
+  try {
+    const rawPath: string = req.body?.dirPath || DEFAULT_TARGET_DIR;
+    const resolved = path.resolve(rawPath);
+    if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+      res.status(404).json({ error: `Dossier introuvable : ${resolved}` });
+      return;
+    }
+
+    const parentDir = path.dirname(resolved);
+    const hasParent = parentDir !== resolved;
+
+    const directories: {
+      name: string;
+      path: string;
+      isGitRepo: boolean;
+      projectMarkers: string[];
+    }[] = [];
+
+    const entries = fs.readdirSync(resolved, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith('$') || entry.name === 'System Volume Information') continue;
+      if (
+        entry.name === 'node_modules' ||
+        entry.name === '.git' ||
+        entry.name === '__pycache__' ||
+        entry.name === '.venv'
+      ) {
+        continue;
+      }
+
+      const fullChild = path.join(resolved, entry.name);
+      const markers: string[] = [];
+      let isGitRepo = false;
+      try {
+        if (fs.existsSync(path.join(fullChild, '.git'))) {
+          isGitRepo = true;
+          markers.push('Git');
+        }
+        if (fs.existsSync(path.join(fullChild, 'package.json'))) markers.push('Node/TS');
+        if (fs.existsSync(path.join(fullChild, 'composer.json'))) markers.push('PHP/Symfony');
+        if (
+          fs.existsSync(path.join(fullChild, 'pyproject.toml')) ||
+          fs.existsSync(path.join(fullChild, 'requirements.txt'))
+        ) {
+          markers.push('Python');
+        }
+        if (fs.existsSync(path.join(fullChild, 'Cargo.toml'))) markers.push('Rust');
+        if (fs.existsSync(path.join(fullChild, 'go.mod'))) markers.push('Go');
+        if (fs.existsSync(path.join(fullChild, 'Dockerfile'))) markers.push('Docker');
+      } catch {
+        // Ignore permission errors on system folders
+      }
+
+      directories.push({
+        name: entry.name,
+        path: fullChild.replace(/\\/g, '/'),
+        isGitRepo,
+        projectMarkers: markers,
+      });
+    }
+
+    // Sort project folders (with markers or Git) first, then alphabetically
+    directories.sort((a, b) => {
+      const aScore = (a.isGitRepo ? 2 : 0) + a.projectMarkers.length;
+      const bScore = (b.isGitRepo ? 2 : 0) + b.projectMarkers.length;
+      if (bScore !== aScore) return bScore - aScore;
+      return a.name.localeCompare(b.name);
+    });
+
+    res.json({
+      currentPath: resolved.replace(/\\/g, '/'),
+      currentName: path.basename(resolved) || resolved.replace(/\\/g, '/'),
+      parentPath: hasParent ? parentDir.replace(/\\/g, '/') : null,
+      detectedStacks: detectProjectStacks(resolved),
+      directories: directories.slice(0, 80),
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur lecture dossier',
+    });
+  }
+});
+
+// Inspect any external project path on the machine
 app.post('/api/projects/inspect', (req, res) => {
   try {
     const rawPath: string = req.body?.projectPath || DEFAULT_TARGET_DIR;
@@ -65,10 +230,14 @@ app.post('/api/projects/inspect', (req, res) => {
         if (
           entry.isDirectory() &&
           !entry.name.startsWith('.') &&
+          !entry.name.startsWith('__') &&
           entry.name !== 'node_modules' &&
           entry.name !== 'dist' &&
           entry.name !== 'build' &&
-          entry.name !== 'vendor'
+          entry.name !== 'vendor' &&
+          entry.name !== 'venv' &&
+          entry.name !== 'coverage' &&
+          entry.name !== 'target'
         ) {
           subFolders.push({
             name: entry.name,
@@ -77,7 +246,7 @@ app.post('/api/projects/inspect', (req, res) => {
         }
       }
     } catch {
-      // Ignore permission errors on sub-directories
+      // Ignore permission errors
     }
 
     res.json({
@@ -85,7 +254,7 @@ app.post('/api/projects/inspect', (req, res) => {
       projectPath: resolved.replace(/\\/g, '/'),
       projectName: path.basename(resolved),
       detectedStacks,
-      subFolders: subFolders.slice(0, 12),
+      subFolders: subFolders.slice(0, 14),
     });
   } catch (err) {
     res.status(500).json({
@@ -126,6 +295,140 @@ app.post('/api/fix', (req, res) => {
   }
 });
 
+// ============================================================================
+// 3. BACKUP HISTORY & 1-CLICK UNDO / ROLLBACK API
+// ============================================================================
+app.post('/api/backups', (req, res) => {
+  const projectPath = req.body?.projectPath || DEFAULT_TARGET_DIR;
+  res.json({ history: listProjectBackups(projectPath) });
+});
+
+app.post('/api/rollback', (req, res) => {
+  const projectPath = req.body?.projectPath || DEFAULT_TARGET_DIR;
+  const entryId = req.body?.entryId;
+  const result = rollbackLastFixOnDisk(projectPath, entryId);
+  res.json(result);
+});
+
+// ============================================================================
+// 4. LIVE CI/CD TASK RUNNER & IDE INTEGRATION (VS CODE / EXPLORER)
+// ============================================================================
+app.post('/api/runner/scripts', (req, res) => {
+  const projectPath = path.resolve(req.body?.projectPath || DEFAULT_TARGET_DIR);
+  const actions: { id: string; label: string; command: string; category: string }[] = [];
+
+  const pkgPath = path.join(projectPath, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      const scripts = pkg.scripts || {};
+      for (const [name, cmd] of Object.entries(scripts)) {
+        if (name === 'dev' || name === 'start' || name.includes('watch')) continue;
+        actions.push({
+          id: `npm-${name}`,
+          label: `npm run ${name}`,
+          command: `npm run ${name}`,
+          category: String(cmd).slice(0, 48),
+        });
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  if (
+    fs.existsSync(path.join(projectPath, 'requirements.txt')) ||
+    fs.existsSync(path.join(projectPath, 'pyproject.toml')) ||
+    detectProjectStacks(projectPath).includes('python')
+  ) {
+    actions.push(
+      { id: 'py-version', label: 'python --version', command: 'python --version', category: 'Python Runtime' },
+      { id: 'py-pytest', label: 'pytest', command: 'python -m pytest', category: 'Python Test Suite' },
+      { id: 'py-compile', label: 'py_compile syntax check', command: 'python -m compileall -q .', category: 'Bytecode Syntax Check' }
+    );
+  }
+
+  if (fs.existsSync(path.join(projectPath, '.git'))) {
+    actions.push(
+      { id: 'git-status', label: 'git status -s', command: 'git status -s', category: 'Git Working Tree' },
+      { id: 'git-diff', label: 'git diff --stat', command: 'git diff --stat', category: 'Git Diff Summary' },
+      { id: 'git-log', label: 'git log -n 5 --oneline', command: 'git log -n 5 --oneline', category: 'Recent Commits' }
+    );
+  }
+
+  res.json({ actions });
+});
+
+app.post('/api/runner/exec', (req, res) => {
+  const projectPath = path.resolve(req.body?.projectPath || DEFAULT_TARGET_DIR);
+  const command: string = req.body?.command || '';
+
+  const ALLOWED_PREFIXES = [
+    'npm run ',
+    'npm test',
+    'npx tsc',
+    'python --version',
+    'python -m pytest',
+    'python -m compileall',
+    'git status',
+    'git diff',
+    'git log',
+    'composer validate',
+  ];
+
+  if (!ALLOWED_PREFIXES.some((prefix) => command.startsWith(prefix))) {
+    res.status(400).json({ error: 'Commande non autorisée par la politique de sécurité du runner.' });
+    return;
+  }
+
+  const start = Date.now();
+  exec(
+    command,
+    { cwd: projectPath, timeout: 45000, maxBuffer: 1024 * 1024 * 2 },
+    (err, stdout, stderr) => {
+      const durationMs = Date.now() - start;
+      const exitCode = err && typeof err.code === 'number' ? err.code : err ? 1 : 0;
+      res.json({
+        command,
+        exitCode,
+        durationMs,
+        stdout: stdout || '',
+        stderr: stderr || '',
+      });
+    }
+  );
+});
+
+app.post('/api/fs/open-editor', (req, res) => {
+  const projectPath = path.resolve(req.body?.projectPath || DEFAULT_TARGET_DIR);
+  const filePath = req.body?.filePath ? path.resolve(projectPath, req.body.filePath) : projectPath;
+  const line = Number(req.body?.line || 1);
+
+  if (!filePath.startsWith(projectPath)) {
+    res.status(400).json({ error: 'Chemin invalide.' });
+    return;
+  }
+
+  exec(`code -g "${filePath}:${line}"`, { cwd: projectPath }, (err) => {
+    res.json({ opened: !err });
+  });
+});
+
+app.post('/api/fs/reveal-explorer', (req, res) => {
+  const projectPath = path.resolve(req.body?.projectPath || DEFAULT_TARGET_DIR);
+  const filePath = req.body?.filePath ? path.resolve(projectPath, req.body.filePath) : projectPath;
+
+  if (!filePath.startsWith(projectPath)) {
+    res.status(400).json({ error: 'Chemin invalide.' });
+    return;
+  }
+
+  const target = fs.existsSync(filePath) ? filePath : projectPath;
+  exec(`explorer.exe /select,"${target.replace(/\//g, '\\')}"`, () => {
+    res.json({ revealed: true });
+  });
+});
+
 app.post('/api/generate-pipeline', (req, res) => {
   try {
     const stacks: StackId[] = req.body?.stacks || ['nodejs', 'typescript', 'github-actions'];
@@ -153,7 +456,7 @@ app.post('/api/generate-pipeline', (req, res) => {
   }
 });
 
-// Probe Local Ollama instance (http://localhost:11434) for 100% Local AI mode
+// Probe Local Ollama instance (http://localhost:11434)
 app.get('/api/ollama/models', async (req, res) => {
   const endpoint = (req.query.endpoint as string) || 'http://localhost:11434';
   try {

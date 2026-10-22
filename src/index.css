@@ -4,62 +4,66 @@
 
 :root,
 [data-theme="obsidian-cyber"] {
-  --studio-bg: #080b12;
-  --studio-panel: #0f1523;
-  --studio-border: #1e293b;
-  --studio-accent: #6366f1;
-  --studio-text: #f1f5f9;
-  --studio-muted: #94a3b8;
+  --studio-bg: #090a0c;
+  --studio-panel: #101115;
+  --studio-surface: #15171c;
+  --studio-border: #22242c;
+  --studio-accent: #2dd4bf;
+  --studio-text: #f4f4f5;
+  --studio-muted: #8e929f;
 }
 
 [data-theme="midnight-slate"] {
-  --studio-bg: #0b111e;
-  --studio-panel: #131c2e;
-  --studio-border: #26354d;
+  --studio-bg: #0b0d11;
+  --studio-panel: #12151c;
+  --studio-surface: #181c25;
+  --studio-border: #252a36;
   --studio-accent: #38bdf8;
   --studio-text: #f8fafc;
   --studio-muted: #94a3b8;
 }
 
 [data-theme="emerald-matrix"] {
-  --studio-bg: #05100d;
-  --studio-panel: #0a1d17;
-  --studio-border: #14382c;
+  --studio-bg: #080b0a;
+  --studio-panel: #0f1412;
+  --studio-surface: #151c19;
+  --studio-border: #202b26;
   --studio-accent: #10b981;
-  --studio-text: #ecfdf5;
-  --studio-muted: #6ee7b7;
+  --studio-text: #f0fdf4;
+  --studio-muted: #86efac;
 }
 
 [data-theme="high-contrast"] {
   --studio-bg: #000000;
-  --studio-panel: #0a0a0a;
-  --studio-border: #3f3f46;
-  --studio-accent: #f59e0b;
+  --studio-panel: #0a0a0c;
+  --studio-surface: #121215;
+  --studio-border: #2e2e36;
+  --studio-accent: #e4e4e7;
   --studio-text: #ffffff;
-  --studio-muted: #d4d4d8;
+  --studio-muted: #a1a1aa;
 }
 
 body {
   background-color: var(--studio-bg);
   color: var(--studio-text);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Custom ergonomic scrollbars */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: #090a0c;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.35);
-  border-radius: 9999px;
+  background: #272932;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.65);
+  background: #393c49;
 }

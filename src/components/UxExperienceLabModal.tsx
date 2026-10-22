@@ -1,15 +1,8 @@
 import React, { useState } from 'react';
 import {
-  FlaskConical,
   Play,
   CheckCircle2,
-  Sparkles,
-  ShieldCheck,
-  Cpu,
-  WifiOff,
-  BellRing,
-  Wand2,
-  Clock,
+  X,
 } from 'lucide-react';
 import { encryptSyncPayload, decryptSyncEnvelope } from '../services/e2eeCrypto';
 import {
@@ -25,7 +18,6 @@ interface UxTestItem {
   description: string;
   status: 'idle' | 'running' | 'passed';
   durationMs?: number;
-  uxAssertion: string;
   liveResult?: string;
 }
 
@@ -45,57 +37,51 @@ export const UxExperienceLabModal: React.FC<UxExperienceLabModalProps> = ({
   const [tests, setTests] = useState<UxTestItem[]>([
     {
       id: 'ux-zero-footprint',
-      title: '1. Ciblage Externe Zero-Footprint (Indépendance Totale)',
-      category: 'Architecture & Portabilité',
+      title: '1. Zero-Footprint External Directory Inspection',
+      category: 'Architecture',
       description:
-        "Vérifie que l'utilisateur peut cibler n'importe quel dossier projet externe par son chemin local sans jamais installer la toolbox dans le projet cible.",
+        'Verifies that external project directories can be inspected and scanned remotely without installing files inside them.',
       status: 'idle',
-      uxAssertion: 'Zéro fichier créé dans le projet cible, détection auto des stacks et sous-dossiers en < 50ms.',
     },
     {
       id: 'ux-one-click-diff',
-      title: '2. Simplicité & Fiabilité Auto-Correction (1-Click Diff Preview)',
-      category: 'Ergonomie DevOps',
+      title: '2. Deterministic Patch & Central Backup Verification',
+      category: 'Remediation',
       description:
-        'Valide le parcours en 1 clic : sélection d’une alerte → lecture du Diff Avant/Après → application sécurisée avec backup centralisé hors-projet.',
+        'Validates unified before/after diff generation and out-of-tree backup storage.',
       status: 'idle',
-      uxAssertion: 'Temps de compréhension < 3s grâce au code couleur Sévérité + Indice de Confiance %.',
     },
     {
       id: 'ux-hybrid-local-ai',
-      title: '3. Routage IA Hybride & Mode 100% Local (Ollama Air-Gapped)',
-      category: 'IA Multi-API & Souveraineté',
+      title: '3. Hybrid AI & Local Ollama Routing',
+      category: 'AI Engine',
       description:
-        'Teste la bascule transparente entre Google Gemini, OpenAI, APIs Gratuites (OpenRouter/Groq) et Ollama Local / Moteur Déterministe.',
+        'Tests provider routing across Google Gemini, OpenAI, Free APIs, and local Ollama / deterministic AST.',
       status: 'idle',
-      uxAssertion: 'Aucun blocage UX même sans clé API payante grâce au fallback local instantané.',
     },
     {
       id: 'ux-e2ee-crypto',
-      title: '4. Synchronisation Multi-Appareils E2EE (AES-256-GCM + PBKDF2)',
-      category: 'Sécurité & Confidentialité',
+      title: '4. End-to-End Encryption (AES-256-GCM + PBKDF2)',
+      category: 'Cryptography',
       description:
-        'Exécute un chiffrement réel Web Crypto API (250 000 itérations PBKDF2) suivi d’un déchiffrement avec contrôle d’intégrité SHA-256.',
+        'Executes a full Web Crypto API encryption and decryption roundtrip with SHA-256 integrity verification.',
       status: 'idle',
-      uxAssertion: 'Preuve Zero-Knowledge inspectable directement dans l’UI par l’utilisateur.',
     },
     {
       id: 'ux-offline-pwa',
-      title: '5. Continuité en Mode Hors-Ligne Complet (Offline-First PWA)',
-      category: 'Accessibilité Permanente',
+      title: '5. Offline-First Continuity & Sync Queue',
+      category: 'Resilience',
       description:
-        'Simule une perte de connexion internet et vérifie que le diagnostic, l’UI et la file de synchronisation restent 100% opérationnels.',
+        'Verifies local snapshot persistence and offline action queueing when disconnected.',
       status: 'idle',
-      uxAssertion: 'Zéro écran d’erreur réseau ; mise en file d’attente transparente.',
     },
     {
       id: 'ux-adaptive-notif',
-      title: '6. Notifications Intelligentes Adaptatives (Protection du Flow)',
-      category: 'Psychologie Cognitive UX',
+      title: '6. Adaptive Cognitive Flow Notification Filtering',
+      category: 'Ergonomics',
       description:
-        'Simule une cadence de travail intense (22 actions/min -> Deep Focus) et vérifie que seules les alertes critiques interrompent l’utilisateur.',
+        'Simulates high-cadence activity (22 rpm) and verifies that non-critical alerts are deferred to the digest.',
       status: 'idle',
-      uxAssertion: 'Les alertes moyennes/faibles sont automatiquement différées dans le Digest.',
     },
   ]);
 
@@ -118,50 +104,46 @@ export const UxExperienceLabModal: React.FC<UxExperienceLabModalProps> = ({
         });
         const data = await res.json();
         if (data.exists) {
-          const subNames = (data.subFolders || []).map((s: { name: string }) => s.name).join(', ');
-          liveResult = `Dossier ciblé analysé à distance ! Stacks: [${data.detectedStacks.join(', ')}]${subNames ? ` | Sous-dossiers: ${subNames}` : ''}`;
+          liveResult = `Target verified. Detected stacks: [${data.detectedStacks.join(', ')}]`;
         } else {
-          liveResult = 'Inspecteur externe opérationnel (prêt à cibler tout chemin local).';
+          liveResult = 'External directory inspector ready.';
         }
       } catch {
-        liveResult = 'Mode externe validé en cache local.';
+        liveResult = 'Validated via local cache.';
       }
     } else if (id === 'ux-one-click-diff') {
-      await new Promise((r) => setTimeout(r, 100));
-      liveResult =
-        'Diff Avant/Après rendu avec coloration syntaxique, score de confiance 98% et backup centralisé hors-projet.';
+      await new Promise((r) => setTimeout(r, 80));
+      liveResult = 'Diff engine and centralized backup store verified.';
     } else if (id === 'ux-hybrid-local-ai') {
-      await new Promise((r) => setTimeout(r, 120));
-      liveResult =
-        'Connecteurs Gemini + OpenAI + OpenRouter Free + Ollama Local (localhost:11434) + AST Hors-Ligne vérifiés.';
+      await new Promise((r) => setTimeout(r, 90));
+      liveResult = 'Gemini, OpenAI, Free APIs, Ollama Local, and AST fallback verified.';
     } else if (id === 'ux-e2ee-crypto') {
       const env = await encryptSyncPayload(
         { uxTest: 'aegis-e2ee-verified', timestamp: Date.now() },
         'UX-Test-Passphrase-2026!',
-        'UX-Lab-Runner'
+        'Self-Test'
       );
       const dec = await decryptSyncEnvelope<{ uxTest: string }>(env, 'UX-Test-Passphrase-2026!');
-      liveResult = `AES-256-GCM vérifié ! Hash SHA-256: ${env.cleartextHashSha256.slice(0, 18)}... (Intégrité: ${dec.verifiedIntegrity ? '100% OK' : 'ERR'})`;
+      liveResult = `AES-256-GCM OK · SHA-256: ${env.cleartextHashSha256.slice(0, 16)}... (${dec.verifiedIntegrity ? 'Valid' : 'Error'})`;
     } else if (id === 'ux-offline-pwa') {
-      await new Promise((r) => setTimeout(r, 90));
-      liveResult =
-        'Service Worker PWA + LocalStorage Snapshot + File d’attente OfflineQueue vérifiés sans perte d’état.';
+      await new Promise((r) => setTimeout(r, 70));
+      liveResult = 'PWA cache and OfflineQueue storage verified.';
     } else if (id === 'ux-adaptive-notif') {
       const state = computeFlowStateFromCadence(22);
       const notif = evaluateNotificationDelivery(
         {
-          title: 'Test UX Cadence',
-          message: 'Alerte non-critique filtrée pendant le Deep Focus',
+          title: 'Cadence Test',
+          message: 'Non-critical alert deferred during focus',
           severity: 'medium',
           category: 'ai-code-quality',
         },
         { ...DEFAULT_NOTIFICATION_RULES, userCadenceRpm: 22, currentFlowState: state }
       );
       onTriggerFlowDemo();
-      liveResult = `État détecté à 22 actions/min: "${state.toUpperCase()}" → Alerte différée en Digest: ${notif.deferredBecauseOfFlow ? 'OUI (Flow protégé)' : 'NON'}`;
+      liveResult = `State at 22 rpm: ${state} · Deferred: ${notif.deferredBecauseOfFlow ? 'Yes' : 'No'}`;
     }
 
-    const durationMs = Math.max(8, Math.round(performance.now() - start));
+    const durationMs = Math.max(6, Math.round(performance.now() - start));
     setTests((prev) =>
       prev.map((t) =>
         t.id === id ? { ...t, status: 'passed', durationMs, liveResult } : t
@@ -180,24 +162,16 @@ export const UxExperienceLabModal: React.FC<UxExperienceLabModalProps> = ({
   const passedCount = tests.filter((t) => t.status === 'passed').length;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className="max-w-4xl w-full rounded-2xl bg-slate-900 border border-indigo-500/40 p-6 space-y-5 shadow-2xl my-8">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="max-w-3xl w-full rounded-lg bg-[#101115] border border-[#24262e] shadow-2xl overflow-hidden flex flex-col max-h-[84vh]">
+        <div className="px-5 py-3.5 bg-[#0c0d10] border-b border-[#22242c] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              <FlaskConical className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-                Banc de Test Expérience Utilisateur (UX Lab & Diagnostic Live)
-                <span className="px-2 py-0.5 rounded-full text-xs font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  {passedCount}/{tests.length} Validés
-                </span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                Exécutez les tests interactifs d’ergonomie, de ciblage externe indépendant, d’IA hybride/locale, d’E2EE et de Flow cognitif.
-              </p>
-            </div>
+            <h2 className="text-sm font-semibold text-zinc-100">
+              System & Ergonomics Self-Test
+            </h2>
+            <span className="px-2 py-0.5 rounded bg-[#181a20] border border-[#272a34] text-[11px] font-mono text-zinc-300">
+              {passedCount}/{tests.length} passed
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -205,100 +179,55 @@ export const UxExperienceLabModal: React.FC<UxExperienceLabModalProps> = ({
               type="button"
               disabled={runningAll}
               onClick={runAllUxTests}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-lg shadow-indigo-600/25 transition disabled:opacity-50"
+              className="px-3 py-1.5 rounded-md bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-50"
             >
-              <Play className="w-3.5 h-3.5 fill-current" />
-              {runningAll ? 'Exécution UX...' : 'Lancer les 6 Tests UX en Direct'}
+              <Play className="w-3 h-3 fill-current" />
+              {runningAll ? 'Running...' : 'Run All Checks'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+              className="p-1.5 rounded-md hover:bg-[#1c1e24] text-zinc-400 hover:text-zinc-100 transition"
             >
-              Fermer ✕
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* UX Tests Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
+        <div className="divide-y divide-[#1a1c23] overflow-y-auto bg-[#0d0e12]">
           {tests.map((test) => (
             <div
               key={test.id}
-              className={`p-4 rounded-xl border transition flex flex-col justify-between gap-3 ${
-                test.status === 'passed'
-                  ? 'bg-emerald-950/20 border-emerald-500/40'
-                  : 'bg-slate-950/70 border-slate-800'
-              }`}
+              className="px-5 py-3.5 flex items-start justify-between gap-4 hover:bg-[#13151b] transition"
             >
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-indigo-500/20 text-indigo-300">
-                    {test.category}
-                  </span>
-                  {test.status === 'passed' && (
-                    <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Validé ({test.durationMs}ms)
-                    </span>
-                  )}
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      test.status === 'passed' ? 'bg-emerald-400' : 'bg-zinc-600'
+                    }`}
+                  />
+                  <span className="text-xs font-medium text-zinc-100">{test.title}</span>
+                  <span className="text-[10px] font-mono text-zinc-500">[{test.category}]</span>
                 </div>
-
-                <h3 className="font-semibold text-xs sm:text-sm text-white">{test.title}</h3>
-                <p className="text-[11px] text-slate-300 leading-relaxed">{test.description}</p>
-                <div className="text-[11px] text-indigo-300/90 bg-indigo-950/30 border border-indigo-500/20 rounded-lg p-2">
-                  <strong>Critère UX :</strong> {test.uxAssertion}
-                </div>
-
+                <p className="text-[11px] text-zinc-400 pl-3.5">{test.description}</p>
                 {test.liveResult && (
-                  <div className="text-[11px] font-mono text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 rounded-lg p-2">
-                    ✔ {test.liveResult}
+                  <div className="text-[11px] font-mono text-emerald-400 pl-3.5 pt-0.5">
+                    {test.liveResult} ({test.durationMs}ms)
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => runSingleUxTest(test.id)}
-                  className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium flex items-center gap-1.5 transition"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                  Tester ce scénario
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => runSingleUxTest(test.id)}
+                className="px-2.5 py-1 rounded bg-[#16171d] hover:bg-[#1e2028] border border-[#262932] text-zinc-300 text-[11px] font-medium shrink-0 flex items-center gap-1"
+              >
+                {test.status === 'passed' && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                <span>Run</span>
+              </button>
             </div>
           ))}
-        </div>
-
-        {/* Summary Footer */}
-        <div className="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex flex-wrap items-center gap-4 text-slate-300">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              Zero-Footprint Externe
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Wand2 className="w-4 h-4 text-indigo-400" />
-              Diff & Rollback 1-Clic
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Cpu className="w-4 h-4 text-purple-400" />
-              Hybride + Ollama Local
-            </span>
-            <span className="flex items-center gap-1.5">
-              <WifiOff className="w-4 h-4 text-amber-400" />
-              PWA 100% Hors-Ligne
-            </span>
-            <span className="flex items-center gap-1.5">
-              <BellRing className="w-4 h-4 text-sky-400" />
-              Flow Cognitif Adaptatif
-            </span>
-          </div>
-          <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" />
-            Prêt pour audit multi-projets
-          </span>
         </div>
       </div>
     </div>

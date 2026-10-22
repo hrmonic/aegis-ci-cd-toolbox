@@ -2,7 +2,13 @@ import { describe, it, expect } from 'vitest';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
-import { scanProject, detectProjectStacks, applyAutoFixOnDisk } from '../server/scanner';
+import {
+  scanProject,
+  detectProjectStacks,
+  applyAutoFixOnDisk,
+  listProjectBackups,
+  rollbackLastFixOnDisk,
+} from '../server/scanner';
 import { generateGitHubActionsWorkflow, generateHardenedDockerfile } from '../server/pipelineTemplates';
 import { encryptSyncPayload, decryptSyncEnvelope } from '../src/services/e2eeCrypto';
 import {
@@ -51,6 +57,85 @@ describe('🛡️ Aegis CI/CD Toolbox — Suite de Tests Unitaires & Intégratio
       const fixRes = applyAutoFixOnDisk(tempDir, gitignoreFinding.autoFix);
       expect(fixRes.success).toBe(true);
       expect(fs.existsSync(path.join(tempDir, '.gitignore'))).toBe(true);
+
+      // Verify Undo / Rollback history and revert the change
+      const history = listProjectBackups(tempDir);
+      expect(history.length).toBeGreaterThanOrEqual(1);
+      const undoRes = rollbackLastFixOnDisk(tempDir);
+      expect(undoRes.success).toBe(true);
+      expect(fs.existsSync(path.join(tempDir, '.gitignore'))).toBe(false);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('analyse en profondeur les injections SQL, arguments mutables Python, Docker :latest et workflows GitHub Actions', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-deep-engine-'));
+    try {
+      // 1. Outdated GitHub Action @v2 + untrusted script injection
+      const wfDir = path.join(tempDir, '.github', 'workflows');
+      fs.mkdirSync(wfDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(wfDir, 'ci.yml'),
+        [
+          'name: CI',
+          'on: [push]',
+          'jobs:',
+          '  build:',
+          '    runs-on: ubuntu-latest',
+          '    steps:',
+          '      - uses: actions/checkout@v2',
+          '      - run: echo "${{ github.event.issue.title }}"',
+          '      - run: npm install',
+        ].join('\n'),
+        'utf-8'
+      );
+
+      // 2. Python file with mutable default argument + SQL injection + TLS verify=False
+      fs.writeFileSync(
+        path.join(tempDir, 'app.py'),
+        [
+          'import requests',
+          'def append_item(item, bucket=[]):',
+          '    bucket.append(item)',
+          '    cursor.execute(f"SELECT * FROM users WHERE name = {item}")',
+          '    requests.get("https://example.com", verify=False)',
+        ].join('\n'),
+        'utf-8'
+      );
+
+      // 3. Dockerfile with :latest and no USER / HEALTHCHECK / .dockerignore
+      fs.writeFileSync(
+        path.join(tempDir, 'Dockerfile'),
+        'FROM node:latest\nWORKDIR /app\nCMD ["node", "index.js"]\n',
+        'utf-8'
+      );
+
+      const report = scanProject(tempDir, ['python', 'docker', 'github-actions']);
+      const ruleIds = report.findings.map((f) => f.ruleId);
+
+      expect(ruleIds).toContain('CICD-002'); // Missing permissions
+      expect(ruleIds).toContain('CICD-005'); // Outdated actions/checkout@v2
+      expect(ruleIds).toContain('CICD-006'); // Untrusted script injection
+      expect(ruleIds).toContain('CICD-007'); // npm install instead of npm ci
+      expect(ruleIds).toContain('SEC-007'); // SQL injection via f-string
+      expect(ruleIds).toContain('SEC-008'); // TLS verify=False
+      expect(ruleIds).toContain('AI-QUAL-004'); // Python mutable default arg
+      expect(ruleIds).toContain('DOCKER-002'); // Missing USER
+      expect(ruleIds).toContain('DOCKER-003'); // :latest tag
+      expect(ruleIds).toContain('DOCKER-005'); // Missing .dockerignore
+
+      // Check telemetry & metrics
+      expect(report.metrics).toBeDefined();
+      expect(report.metrics!.rulesEvaluated).toBe(35);
+      expect(report.metrics!.totalLinesOfCode).toBeGreaterThan(5);
+
+      // Test line-aware Auto-Fix on Python mutable default argument
+      const mutableFinding = report.findings.find((f) => f.ruleId === 'AI-QUAL-004')!;
+      const fixRes = applyAutoFixOnDisk(tempDir, mutableFinding.autoFix);
+      expect(fixRes.success).toBe(true);
+      const updatedPy = fs.readFileSync(path.join(tempDir, 'app.py'), 'utf-8');
+      expect(updatedPy).toContain('bucket=None');
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }

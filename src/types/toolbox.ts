@@ -77,6 +77,29 @@ export interface CategoryScore {
   criticalCount: number;
 }
 
+export interface LanguageStat {
+  language: string;
+  extension: string;
+  files: number;
+  lines: number;
+}
+
+export interface FileHotspot {
+  filePath: string;
+  lines: number;
+  complexity: number;
+  issues: number;
+}
+
+export interface CodebaseMetrics {
+  totalLinesOfCode: number;
+  totalCodeFiles: number;
+  testFilesCount: number;
+  rulesEvaluated: number;
+  languages: LanguageStat[];
+  hotspots: FileHotspot[];
+}
+
 export interface ScanReport {
   id: string;
   projectPath: string;
@@ -90,6 +113,7 @@ export interface ScanReport {
   selectedStacks: StackId[];
   categoryScores: CategoryScore[];
   findings: DiagnosticFinding[];
+  metrics?: CodebaseMetrics;
   gitInfo?: {
     branch: string;
     remoteUrl: string;

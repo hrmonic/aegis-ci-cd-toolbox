@@ -1,11 +1,7 @@
 import React from 'react';
 import {
-  Bell,
-  BrainCircuit,
   Clock,
   CheckCheck,
-  Sparkles,
-  Flame,
   Volume2,
   VolumeX,
 } from 'lucide-react';
@@ -33,59 +29,39 @@ export const AdaptiveNotificationsPanel: React.FC<AdaptiveNotificationsPanelProp
   onSimulateFlowBurst,
 }) => {
   const deferredList = notifications.filter((n) => n.deferredBecauseOfFlow && !n.read);
-  const activeList = notifications.filter((n) => !n.deferredBecauseOfFlow || n.read);
-
-  const flowBadge =
-    rules.currentFlowState === 'deep-focus'
-      ? {
-          label: 'Deep Focus (Flow Intense — Digest Actif)',
-          color: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
-        }
-      : rules.currentFlowState === 'active-review'
-        ? {
-            label: 'Revue Active (Filtrage Intelligent)',
-            color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-          }
-        : {
-            label: 'Veille / Disponible (Livraison Complète)',
-            color: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
-          };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 text-xs">
-      {/* Left column: Cognitive Rhythm & Adaptive Configuration */}
-      <div className="lg:col-span-5 space-y-3 p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/90">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <BrainCircuit className="w-4 h-4 text-indigo-400" />
-            <span className="font-semibold text-slate-100">Rythme d’Utilisation & Flow</span>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 text-xs">
+      {/* Left column: Cognitive Cadence & Filter Rules */}
+      <div className="lg:col-span-5 space-y-4 p-4 rounded-md bg-[#0c0d10] border border-[#22242c]">
+        <div className="flex items-center justify-between gap-2 border-b border-[#1e2028] pb-3">
+          <div>
+            <div className="font-semibold text-zinc-100">Adaptive Notification Cadence</div>
+            <div className="text-[11px] text-zinc-400">
+              Automatically batches non-critical alerts during high-cadence focus
+            </div>
           </div>
-          <span className={`px-2 py-0.5 rounded-full text-[11px] border font-medium ${flowBadge.color}`}>
-            {flowBadge.label}
+          <span className="px-2 py-0.5 rounded bg-[#181a20] border border-[#2a2d37] text-[10px] font-mono uppercase text-zinc-200">
+            {rules.currentFlowState}
           </span>
         </div>
 
-        {/* Cadence Meter */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-[11px] text-slate-400">
-            <span>Cadence d’interaction temps réel</span>
-            <span className="font-mono text-indigo-300 font-semibold">{rules.userCadenceRpm} actions / min</span>
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-[11px] text-zinc-400">
+            <span>Interaction Rate</span>
+            <span className="font-mono text-zinc-200">{rules.userCadenceRpm} actions / min</span>
           </div>
-          <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+          <div className="w-full h-1.5 rounded-full bg-[#1a1c23] overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 via-indigo-500 to-purple-500 transition-all duration-300"
+              className="h-full bg-teal-400 transition-all duration-300"
               style={{ width: `${Math.min(100, (rules.userCadenceRpm / 25) * 100)}%` }}
             />
           </div>
-          <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
-            Lorsque votre cadence dépasse <strong className="text-slate-200">14 actions/min</strong>, le Studio passe automatiquement en{' '}
-            <strong className="text-purple-300">Deep Focus</strong> et met en file d’attente les notifications non-critiques pour ne jamais interrompre votre résolution de bugs.
-          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 pt-1">
+        <div className="grid grid-cols-2 gap-2.5">
           <div>
-            <label className="block text-[11px] text-slate-400 mb-1">Mode d’Adaptation</label>
+            <label className="block text-[11px] text-zinc-400 mb-1">Delivery Policy</label>
             <select
               value={rules.mode}
               onChange={(e) =>
@@ -94,16 +70,16 @@ export const AdaptiveNotificationsPanel: React.FC<AdaptiveNotificationsPanelProp
                   mode: e.target.value as AdaptiveNotificationRule['mode'],
                 })
               }
-              className="w-full rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100"
+              className="w-full rounded-md bg-[#121318] border border-[#252730] px-2.5 py-1.5 text-xs text-zinc-200"
             >
-              <option value="adaptive-flow">Auto-Adaptatif au Rythme</option>
-              <option value="focus-dnd">Focus Strict (Critiques Seules)</option>
-              <option value="instant-all">Temps Réel Intégral</option>
+              <option value="adaptive-flow">Adaptive Flow</option>
+              <option value="focus-dnd">Strict Focus (Critical Only)</option>
+              <option value="instant-all">Immediate All</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-[11px] text-slate-400 mb-1">Seuil en Deep Focus</label>
+            <label className="block text-[11px] text-zinc-400 mb-1">Focus Threshold</label>
             <select
               value={rules.minSeverityDuringFocus}
               onChange={(e) =>
@@ -112,34 +88,34 @@ export const AdaptiveNotificationsPanel: React.FC<AdaptiveNotificationsPanelProp
                   minSeverityDuringFocus: e.target.value as Severity,
                 })
               }
-              className="w-full rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-100"
+              className="w-full rounded-md bg-[#121318] border border-[#252730] px-2.5 py-1.5 text-xs text-zinc-200"
             >
-              <option value="critical">Critique uniquement</option>
-              <option value="high">Élevé & Critique</option>
-              <option value="medium">Moyen et plus</option>
+              <option value="critical">Critical Only</option>
+              <option value="high">High & Critical</option>
+              <option value="medium">Medium & Above</option>
             </select>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
-          <label className="flex items-center gap-2 cursor-pointer text-slate-300">
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#1e2028]">
+          <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
             <input
               type="checkbox"
               checked={rules.quietHoursEnabled}
               onChange={(e) => onUpdateRules({ ...rules, quietHoursEnabled: e.target.checked })}
-              className="rounded border-slate-600 text-indigo-500"
+              className="rounded border-zinc-700"
             />
-            <Clock className="w-3.5 h-3.5 text-slate-400" />
-            <span>Heures Silencieuses ({rules.quietHoursStart} - {rules.quietHoursEnd})</span>
+            <Clock className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Quiet Hours ({rules.quietHoursStart} - {rules.quietHoursEnd})</span>
           </label>
 
           <button
             type="button"
             onClick={() => onUpdateRules({ ...rules, soundEnabled: !rules.soundEnabled })}
-            className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-1"
+            className="px-2.5 py-1 rounded bg-[#16171d] hover:bg-[#1e2028] border border-[#262932] text-zinc-300 flex items-center gap-1"
           >
-            {rules.soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" /> : <VolumeX className="w-3.5 h-3.5 text-slate-400" />}
-            <span>{rules.soundEnabled ? 'Son Actif' : 'Silencieux'}</span>
+            {rules.soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5 text-zinc-500" />}
+            <span>{rules.soundEnabled ? 'Sound On' : 'Muted'}</span>
           </button>
         </div>
 
@@ -147,84 +123,68 @@ export const AdaptiveNotificationsPanel: React.FC<AdaptiveNotificationsPanelProp
           <button
             type="button"
             onClick={onSimulateFlowBurst}
-            className="flex-1 px-2.5 py-1.5 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-200 font-medium flex items-center justify-center gap-1.5 transition"
+            className="flex-1 px-3 py-1.5 rounded-md bg-[#16171d] hover:bg-[#1e2028] border border-[#262932] text-zinc-200 font-medium transition"
           >
-            <Flame className="w-3.5 h-3.5 text-purple-400" />
-            Simuler Pic d’Activité (Deep Focus)
+            Test Deep-Focus Deferral (22 rpm)
           </button>
           {deferredList.length > 0 && (
             <button
               type="button"
               onClick={onFlushDeferredDigest}
-              className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center gap-1 transition"
+              className="px-3 py-1.5 rounded-md bg-zinc-100 hover:bg-white text-zinc-950 font-medium transition"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              Ouvrir Digest ({deferredList.length})
+              Release Digest ({deferredList.length})
             </button>
           )}
         </div>
       </div>
 
-      {/* Right column: Live Smart Notification Feed & Deferred Digest */}
-      <div className="lg:col-span-7 flex flex-col justify-between p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/90">
-        <div className="flex items-center justify-between mb-2.5">
-          <div className="flex items-center gap-2">
-            <Bell className="w-4 h-4 text-indigo-400" />
-            <span className="font-semibold text-slate-100">
-              Flux Intelligent ({activeList.length} livrées · {deferredList.length} différées par le Flow)
-            </span>
-          </div>
-
+      {/* Right column: Event Log */}
+      <div className="lg:col-span-7 flex flex-col justify-between p-4 rounded-md bg-[#0c0d10] border border-[#22242c]">
+        <div className="flex items-center justify-between mb-3 border-b border-[#1e2028] pb-2.5">
+          <span className="font-semibold text-zinc-100">
+            Activity & Notification Log ({notifications.length})
+          </span>
           <button
             type="button"
             onClick={onMarkAllRead}
-            className="text-[11px] text-slate-400 hover:text-slate-200 flex items-center gap-1"
+            className="text-[11px] text-zinc-400 hover:text-zinc-200 flex items-center gap-1"
           >
             <CheckCheck className="w-3.5 h-3.5" />
-            Tout marquer comme lu
+            Mark all read
           </button>
         </div>
 
-        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+        <div className="divide-y divide-[#181920] max-h-72 overflow-y-auto pr-1">
           {notifications.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              Aucune notification enregistrée. Lancez un scan ou appliquez un correctif.
-            </div>
+            <div className="text-center py-10 text-zinc-500">No events logged yet.</div>
           ) : (
-            notifications.slice(0, 10).map((item) => (
+            notifications.slice(0, 14).map((item) => (
               <div
                 key={item.id}
-                className={`p-2.5 rounded-lg border flex items-start justify-between gap-3 transition ${
-                  item.deferredBecauseOfFlow && !item.read
-                    ? 'bg-purple-950/25 border-purple-500/30'
-                    : item.severity === 'critical'
-                      ? 'bg-rose-950/30 border-rose-500/40'
-                      : 'bg-slate-900/70 border-slate-800'
-                }`}
+                className="py-2.5 flex items-start justify-between gap-3"
               >
                 <div className="space-y-0.5 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
                     <span
-                      className={`px-1.5 py-0.2 rounded text-[10px] font-mono uppercase ${
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                         item.severity === 'critical'
-                          ? 'bg-rose-500/20 text-rose-300'
+                          ? 'bg-red-400'
                           : item.severity === 'high'
-                            ? 'bg-amber-500/20 text-amber-300'
-                            : 'bg-indigo-500/20 text-indigo-300'
+                            ? 'bg-amber-400'
+                            : 'bg-teal-400'
                       }`}
-                    >
-                      {item.severity}
-                    </span>
-                    <span className="font-semibold text-slate-100 truncate">{item.title}</span>
+                    />
+                    <span className="font-medium text-zinc-100 truncate">{item.title}</span>
                     {item.deferredBecauseOfFlow && !item.read && (
-                      <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[10px]">
-                        Différée (Protection Flow)
+                      <span className="px-1.5 py-0.2 rounded bg-[#1b1d24] border border-[#2a2d38] text-zinc-400 text-[10px] font-mono">
+                        Deferred (Flow)
                       </span>
                     )}
                   </div>
-                  <p className="text-slate-300 text-[11px] leading-snug">{item.message}</p>
+                  <p className="text-zinc-400 text-[11px] pl-3.5">{item.message}</p>
                 </div>
-                <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                <span className="text-[10px] font-mono text-zinc-500 shrink-0">
                   {new Date(item.createdAt).toLocaleTimeString()}
                 </span>
               </div>
