@@ -56,7 +56,7 @@ async function runCli() {
 
   if (command === 'studio' || command === 'start') {
     console.log(`${C.green}▶ Démarrage d'Aegis CI/CD Studio sur le projet : ${C.bold}${targetPath}${C.reset}`);
-    const child = spawn('npx', ['tsx', path.join(ROOT_DIR, 'server/index.ts'), '--target', targetPath], {
+    const child = spawn(`npx tsx "${path.join(ROOT_DIR, 'server/index.ts')}" --target "${targetPath}"`, {
       cwd: ROOT_DIR,
       stdio: 'inherit',
       shell: true,
@@ -66,9 +66,9 @@ async function runCli() {
   }
 
   if (command === 'scan' || command === 'fix') {
+    const extraFlags = args.slice(1).filter((a) => a.startsWith('-')).join(' ');
     const child = spawn(
-      'npx',
-      ['tsx', path.join(ROOT_DIR, 'server/cliRunner.ts'), command, targetPath, ...args.slice(1)],
+      `npx tsx "${path.join(ROOT_DIR, 'server/cliRunner.ts')}" ${command} "${targetPath}" ${extraFlags}`,
       {
         cwd: ROOT_DIR,
         stdio: 'inherit',

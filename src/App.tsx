@@ -946,16 +946,19 @@ export function App() {
                                   : 'Tester localhost:11434'}
                               </button>
                             ) : prov.id !== 'deterministic-offline' ? (
-                              <input
+                                <input
                                 type="password"
                                 value={prov.apiKey || ''}
                                 onChange={(e) => {
-                                  const updated = aiProviders.map((p) =>
+                                  const nextStatus: AIProviderConfig['status'] = e.target.value
+                                    ? 'ready'
+                                    : 'missing-key';
+                                  const updated: AIProviderConfig[] = aiProviders.map((p) =>
                                     p.id === prov.id
                                       ? {
                                           ...p,
                                           apiKey: e.target.value,
-                                          status: e.target.value ? 'ready' : 'missing-key',
+                                          status: nextStatus,
                                         }
                                       : p
                                   );

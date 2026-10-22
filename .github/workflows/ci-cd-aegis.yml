@@ -1,0 +1,44 @@
+name: "🛡️ Aegis CI/CD — Qualité, Sécurité & Zéro-Bug IA"
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node-quality-and-tests:
+    name: "🛡️ Node.js / TypeScript — Qualité, Typage, Tests & Build"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Configuration Node.js 22 LTS avec Cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Installation reproductible des dépendances
+        run: npm ci
+
+      - name: Vérification statique du typage TypeScript (Anti-Bug IA)
+        run: npm run lint
+
+      - name: Exécution des tests unitaires et d'intégration CI/CD
+        run: npm test
+
+      - name: Vérification du build de production du Studio DevOps
+        run: npm run build
+
+      - name: Auto-Diagnostic CI/CD Toolbox (Dogfooding Score >= 95/100)
+        run: npm run scan -- --strict

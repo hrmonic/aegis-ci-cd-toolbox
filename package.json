@@ -1,6 +1,9 @@
 {
   "name": "ci-cd-toolbox",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "Studio DevOps & Utilitaire de Diagnostic CI/CD Multi-Stacks avec Auto-Correction IA Hybride (Gemini, OpenAI, APIs Gratuites, Ollama Local), Synchronisation E2EE et Mode Offline Complet.",
   "type": "module",
   "bin": {
