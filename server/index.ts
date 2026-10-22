@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   scanProject,
   applyAutoFixOnDisk,
+  detectProjectStacks,
   STACK_CATALOG,
 } from './scanner.ts';
 import {
@@ -40,6 +41,58 @@ app.get('/api/health', (_req, res) => {
 
 app.get('/api/stacks', (_req, res) => {
   res.json({ stacks: STACK_CATALOG });
+});
+
+// Inspect any external project path on the machine (Zero-Footprint External Targeting)
+app.post('/api/projects/inspect', (req, res) => {
+  try {
+    const rawPath: string = req.body?.projectPath || DEFAULT_TARGET_DIR;
+    const resolved = path.resolve(rawPath);
+    if (!fs.existsSync(resolved) || !fs.statSync(resolved).isDirectory()) {
+      res.status(404).json({
+        exists: false,
+        projectPath: resolved,
+        error: `Le dossier "${resolved}" est introuvable.`,
+      });
+      return;
+    }
+
+    const detectedStacks = detectProjectStacks(resolved);
+    const subFolders: { name: string; path: string }[] = [];
+    try {
+      const entries = fs.readdirSync(resolved, { withFileTypes: true });
+      for (const entry of entries) {
+        if (
+          entry.isDirectory() &&
+          !entry.name.startsWith('.') &&
+          entry.name !== 'node_modules' &&
+          entry.name !== 'dist' &&
+          entry.name !== 'build' &&
+          entry.name !== 'vendor'
+        ) {
+          subFolders.push({
+            name: entry.name,
+            path: path.join(resolved, entry.name).replace(/\\/g, '/'),
+          });
+        }
+      }
+    } catch {
+      // Ignore permission errors on sub-directories
+    }
+
+    res.json({
+      exists: true,
+      projectPath: resolved.replace(/\\/g, '/'),
+      projectName: path.basename(resolved),
+      detectedStacks,
+      subFolders: subFolders.slice(0, 12),
+    });
+  } catch (err) {
+    res.status(500).json({
+      exists: false,
+      error: err instanceof Error ? err.message : 'Erreur inspection dossier cible',
+    });
+  }
 });
 
 app.post('/api/scan', (req, res) => {

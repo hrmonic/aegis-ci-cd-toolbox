@@ -25,6 +25,7 @@ import {
   Server,
   HardDriveDownload,
   Activity,
+  FlaskConical,
 } from 'lucide-react';
 import type {
   ScanReport,
@@ -67,10 +68,19 @@ import {
 import { WidgetShell } from './components/WidgetShell';
 import { E2EESyncPanel } from './components/E2EESyncPanel';
 import { AdaptiveNotificationsPanel } from './components/AdaptiveNotificationsPanel';
+import { ExternalProjectSelectorBar } from './components/ExternalProjectSelectorBar';
+import { UxExperienceLabModal } from './components/UxExperienceLabModal';
 
 export function App() {
-  // Project & Scan State
-  const [projectPath, setProjectPath] = useState<string>('f:/APP/ci-cd-toolbox');
+  // Project & Scan State (100% generic default; user can enter any external folder path in the UI)
+  const [projectPath, setProjectPath] = useState<string>(() => {
+    try {
+      return localStorage.getItem('aegis_active_target_path') || '.';
+    } catch {
+      return '.';
+    }
+  });
+  const [showUxLabModal, setShowUxLabModal] = useState<boolean>(false);
   const [selectedStacks, setSelectedStacks] = useState<StackId[]>([
     'nodejs',
     'typescript',
@@ -224,10 +234,11 @@ export function App() {
     );
   }, [aiProviders]);
 
-  // Execute CI/CD Scan
+  // Execute CI/CD Scan on any external project path
   const runScan = useCallback(
-    async (customStacks?: StackId[]) => {
+    async (customStacks?: StackId[], overrideProjectPath?: string) => {
       setScanning(true);
+      const targetDir = overrideProjectPath || projectPath;
       const stacksToUse = customStacks || selectedStacks;
       try {
         if (effectiveOffline) {
@@ -247,7 +258,7 @@ export function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            projectPath,
+            projectPath: targetDir,
             selectedStacks: stacksToUse,
           }),
         });
@@ -264,8 +275,8 @@ export function App() {
 
         const critCount = data.findings.filter((f) => f.severity === 'critical' && f.status === 'open').length;
         pushSmartNotification(
-          `Scan CI/CD terminé (${data.overallScore}/100)`,
-          `${data.filesScanned} fichiers inspectés en ${data.durationMs}ms. ${data.findings.length} diagnostic(s) identifié(s).`,
+          `Scan CI/CD terminé sur ${data.projectName} (${data.overallScore}/100)`,
+          `${data.filesScanned} fichiers inspectés dans ${targetDir} en ${data.durationMs}ms.`,
           critCount > 0 ? 'critical' : data.findings.length > 0 ? 'medium' : 'info',
           'pipeline-cicd'
         );
@@ -588,6 +599,16 @@ export function App() {
               <span>{customizeMode ? 'Terminer Layout' : 'Widgets'}</span>
             </button>
 
+            {/* UX Experience Lab Button */}
+            <button
+              type="button"
+              onClick={() => setShowUxLabModal(true)}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-purple-600/25 hover:bg-purple-600/40 border border-purple-500/40 text-purple-200 flex items-center gap-1.5 transition"
+            >
+              <FlaskConical className="w-3.5 h-3.5 text-purple-300" />
+              <span>Tests UX Live</span>
+            </button>
+
             {/* Export / Install CLI Modal Button */}
             <button
               type="button"
@@ -595,7 +616,7 @@ export function App() {
               className="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 flex items-center gap-1.5 transition"
             >
               <HardDriveDownload className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="hidden sm:inline">Installer / Exporter</span>
+              <span className="hidden sm:inline">Mode Externe / CLI</span>
             </button>
 
             {/* Primary Scan & Auto-Fix Actions */}
@@ -654,6 +675,30 @@ export function App() {
           </div>
         )}
       </header>
+
+      {/* =====================================================================
+          EXTERNAL TARGET PROJECT SELECTOR BAR (ZERO-FOOTPRINT)
+      ===================================================================== */}
+      <ExternalProjectSelectorBar
+        activeProjectPath={projectPath}
+        detectedStacks={report.detectedStacks}
+        scanning={scanning}
+        onSelectTargetProject={(nextPath, autoStacks) => {
+          setProjectPath(nextPath);
+          try {
+            localStorage.setItem('aegis_active_target_path', nextPath);
+          } catch {
+            // Ignore storage errors
+          }
+          if (autoStacks && autoStacks.length > 0) {
+            const merged = Array.from(new Set([...autoStacks, 'github-actions', 'docker'])) as StackId[];
+            setSelectedStacks(merged);
+            runScan(merged, nextPath);
+          } else {
+            runScan(undefined, nextPath);
+          }
+        }}
+      />
 
       {/* =====================================================================
           MODULAR WIDGETS WORKSPACE GRID
@@ -1403,6 +1448,34 @@ export function App() {
           return null;
         })}
       </main>
+
+      {/* =====================================================================
+          MODAL: UX EXPERIENCE LAB (LIVE UX TESTS)
+      ===================================================================== */}
+      <UxExperienceLabModal
+        open={showUxLabModal}
+        onClose={() => setShowUxLabModal(false)}
+        activeProjectPath={projectPath}
+        onTriggerFlowDemo={() => {
+          const updated: AdaptiveNotificationRule = {
+            ...notifRules,
+            userCadenceRpm: 22,
+            currentFlowState: 'deep-focus',
+          };
+          setNotifRules(updated);
+          const deferredItem = evaluateNotificationDelivery(
+            {
+              title: 'Test UX : Alerte mise en sourdine (Deep Focus)',
+              message:
+                'Votre cadence (22 actions/min) indique une forte concentration : cette alerte non-critique a été placée dans le Digest.',
+              severity: 'medium',
+              category: 'ai-code-quality',
+            },
+            updated
+          );
+          setNotifications((prev) => [deferredItem, ...prev]);
+        }}
+      />
 
       {/* =====================================================================
           MODAL: PORTABLE INSTALLATION & CLI EXPORT INSTRUCTIONS

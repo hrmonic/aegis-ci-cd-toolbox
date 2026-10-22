@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import type {
   StackId,
   DiagnosticFinding,
@@ -14,6 +15,10 @@ import {
   generateGitHubActionsWorkflow,
   generateHardenedDockerfile,
 } from './pipelineTemplates.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const AEGIS_ROOT_DIR = path.resolve(__dirname, '..');
 
 const IGNORED_DIRS = new Set([
   'node_modules',
@@ -744,7 +749,9 @@ export function applyAutoFixOnDisk(
     return { success: false, message: 'Chemin de fichier hors du périmètre du projet.' };
   }
 
-  const backupDir = path.join(resolvedProject, '.ci-cd-toolbox-backups');
+  // Store backups centrally in Aegis's own folder so target projects stay 100% clean (Zero-Footprint)
+  const projectSlug = path.basename(resolvedProject).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const backupDir = path.join(AEGIS_ROOT_DIR, '.ci-cd-toolbox-backups', projectSlug);
   if (!fs.existsSync(backupDir)) {
     fs.mkdirSync(backupDir, { recursive: true });
   }
