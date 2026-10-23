@@ -265,6 +265,28 @@ describe('🛡️ Aegis CI/CD Toolbox — Suite de Tests Unitaires & Intégratio
       expect(finalStatus.recentCommits[0].subject).toBe(
         'fix(ci-cd): apply Aegis automated patches'
       );
+
+      // Test modified dotfile (.github/workflows/ci.yml) where git status --porcelain has a leading space " M .github/workflows/ci.yml"
+      const wfDir = path.join(tempDir, '.github', 'workflows');
+      fs.mkdirSync(wfDir, { recursive: true });
+      fs.writeFileSync(path.join(wfDir, 'ci.yml'), 'name: CI\n', 'utf-8');
+      commitAndPushChanges(tempDir, {
+        commitMessage: 'chore: add workflow',
+        pushToOrigin: false,
+      });
+
+      // Modify the tracked .github/workflows/ci.yml so git status --porcelain outputs " M .github/workflows/ci.yml"
+      fs.writeFileSync(path.join(wfDir, 'ci.yml'), 'name: CI\npermissions:\n  contents: read\n', 'utf-8');
+      const dotfileStatus = inspectLocalGitStatus(tempDir);
+      expect(dotfileStatus.changedFiles[0].path).toBe('.github/workflows/ci.yml');
+
+      // Also verify auto-healing if a caller passes "github/workflows/ci.yml" without leading dot
+      const dotCommit = commitAndPushChanges(tempDir, {
+        commitMessage: 'fix(ci): harden workflow permissions',
+        filesToStage: ['github/workflows/ci.yml'],
+        pushToOrigin: false,
+      });
+      expect(dotCommit.success).toBe(true);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }

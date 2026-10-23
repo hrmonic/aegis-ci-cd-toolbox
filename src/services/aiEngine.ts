@@ -156,7 +156,37 @@ Code actuel:
 \`\`\`
 ${finding.autoFix.beforeSnippet}
 \`\`\`
-Réponds uniquement avec le bloc de code corrigé suivi d'une brève justification technique.`;
+Proposition de référence:
+\`\`\`
+${finding.autoFix.afterSnippet}
+\`\`\`
+Réponds avec un bloc de code \`\`\` contenant uniquement le code de remplacement exact, suivi d'une brève justification technique.`;
+}
+
+function extractPatchedCodeAndExplanation(
+  rawText: string,
+  fallbackPatch: string,
+  fallbackSummary: string
+): { patchedCode: string; explanation: string } {
+  if (!rawText || !rawText.trim()) {
+    return { patchedCode: fallbackPatch, explanation: fallbackSummary };
+  }
+  const codeBlockMatch = rawText.match(/```(?:[a-zA-Z0-9_-]+)?\s*\n([\s\S]*?)```/);
+  if (codeBlockMatch && codeBlockMatch[1].trim().length > 0) {
+    const extractedCode = codeBlockMatch[1].trim();
+    const explanationText = rawText
+      .replace(codeBlockMatch[0], '')
+      .trim()
+      .slice(0, 480);
+    return {
+      patchedCode: extractedCode,
+      explanation: explanationText || fallbackSummary,
+    };
+  }
+  return {
+    patchedCode: fallbackPatch,
+    explanation: rawText.trim().slice(0, 480) || fallbackSummary,
+  };
 }
 
 export async function generateHybridRemediation(
@@ -171,13 +201,15 @@ export async function generateHybridRemediation(
   const start = performance.now();
   const prompt = buildRemediationPrompt(finding);
 
-  // 1. If offline mode is forced or browser is offline -> use local Ollama if localOnly, or deterministic offline engine
+  // 1. If offline mode is forced or browser is offline -> use deterministic offline engine
   if (options.offlineForced || !navigator.onLine) {
     return buildDeterministicResult(finding, start, 'deterministic-offline', 'Moteur Déterministe Hors-Ligne');
   }
 
-  // 2. If Local-Only (100% Local Models mode) is enabled -> only allow ollama-local or deterministic-offline
-  if (options.localOnlyMode) {
+  const preferred = providers.find((p) => p.id === options.preferredProvider);
+
+  // 2. If Local-Only mode OR preferred provider is ollama-local -> query local Ollama daemon
+  if (options.localOnlyMode || preferred?.id === 'ollama-local') {
     const ollama = providers.find((p) => p.id === 'ollama-local');
     if (ollama && ollama.enabled) {
       try {
@@ -192,18 +224,21 @@ export async function generateHybridRemediation(
         });
         if (res.ok) {
           const data = await res.json();
+          const parsed = extractPatchedCodeAndExplanation(
+            String(data.response || ''),
+            finding.autoFix.afterSnippet,
+            finding.autoFix.summary
+          );
           return {
             providerUsed: 'ollama-local',
             providerName: `Ollama Local (${ollama.model})`,
             modelUsed: ollama.model,
-            confidence: Math.max(90, finding.autoFix.confidence),
-            explanation:
-              data.response ||
-              `Correction générée localement via Ollama (${ollama.model}) en mode Air-Gapped (aucune donnée transmise sur le cloud).`,
-            patchedCode: finding.autoFix.afterSnippet,
+            confidence: Math.max(92, finding.autoFix.confidence),
+            explanation: parsed.explanation,
+            patchedCode: parsed.patchedCode,
             verificationSteps: [
               `Vérifier le diff généré pour ${finding.filePath}`,
-              'Exécuter la suite de tests locale (`npm test`)',
+              'Validation Verify-Before-Commit avant écriture finale',
               'Relancer le scan CI/CD pour confirmer la résolution',
             ],
             latencyMs: Math.round(performance.now() - start),
@@ -214,17 +249,17 @@ export async function generateHybridRemediation(
         // Fallback to local deterministic engine when Ollama daemon is not running
       }
     }
-    return buildDeterministicResult(
-      finding,
-      start,
-      'ollama-local',
-      `Moteur Local Hybride (${ollama?.model || 'qwen2.5-coder:7b'} / AST Local)`
-    );
+    if (options.localOnlyMode || preferred?.id === 'ollama-local') {
+      return buildDeterministicResult(
+        finding,
+        start,
+        'ollama-local',
+        `Moteur Local Hybride (${ollama?.model || 'qwen2.5-coder:7b'} / AST Local)`
+      );
+    }
   }
 
-  // 3. Hybrid Cloud + Free API + Local routing
-  const preferred = providers.find((p) => p.id === options.preferredProvider);
-
+  // 3. Hybrid Cloud + Free API routing
   // Google Gemini API call if key provided
   if (preferred?.id === 'gemini' && preferred.apiKey?.trim()) {
     try {
@@ -239,13 +274,18 @@ export async function generateHybridRemediation(
       if (res.ok) {
         const data = await res.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const parsed = extractPatchedCodeAndExplanation(
+          text,
+          finding.autoFix.afterSnippet,
+          finding.autoFix.summary
+        );
         return {
           providerUsed: 'gemini',
           providerName: 'Google Gemini API',
           modelUsed: preferred.model,
           confidence: 97,
-          explanation: text.slice(0, 420) || finding.autoFix.summary,
-          patchedCode: finding.autoFix.afterSnippet,
+          explanation: parsed.explanation,
+          patchedCode: parsed.patchedCode,
           verificationSteps: [
             `Validation syntaxique & typage sur ${finding.filePath}`,
             'Exécution automatique des tests de non-régression',
@@ -281,13 +321,18 @@ export async function generateHybridRemediation(
       if (res.ok) {
         const data = await res.json();
         const text = data?.choices?.[0]?.message?.content || '';
+        const parsed = extractPatchedCodeAndExplanation(
+          text,
+          finding.autoFix.afterSnippet,
+          finding.autoFix.summary
+        );
         return {
           providerUsed: preferred.id,
           providerName: preferred.name,
           modelUsed: preferred.model,
           confidence: 96,
-          explanation: text.slice(0, 420) || finding.autoFix.summary,
-          patchedCode: finding.autoFix.afterSnippet,
+          explanation: parsed.explanation,
+          patchedCode: parsed.patchedCode,
           verificationSteps: [
             `Contrôle d'intégrité du fichier ${finding.filePath}`,
             'Relance du pipeline de validation CI/CD',

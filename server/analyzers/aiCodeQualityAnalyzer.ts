@@ -219,10 +219,10 @@ export function analyzeAiCodeQualityAndMetrics(
             autoFix: {
               id: `fix-explicit-any-${relFile}-${lineNum}`,
               available: true,
-              reliable: true,
-              confidence: 92,
-              engine: 'deterministic',
-              summary: 'Remplacer `: any` par le type sécurisé `: unknown`.',
+              reliable: false,
+              confidence: 84,
+              engine: 'hybrid-ai',
+              summary: 'Remplacer `: any` par `: unknown` avec vérification de type (Type Narrowing).',
               filePath: relFile,
               beforeSnippet: trimmed,
               afterSnippet: trimmed.replace(/:\s*any\b/, ': unknown'),
@@ -270,6 +270,18 @@ export function analyzeAiCodeQualityAndMetrics(
       // 5. AI-QUAL-004: Python mutable default arguments `def fn(a=[]):` or `def fn(a={}):`
       if (ext === '.py' && /^\s*def\s+[a-zA-Z0-9_]+\s*\([^)]*=\s*(?:\[\]|\{\})/.test(line)) {
         fileIssues++;
+        const indentMatch = line.match(/^(\s*)/);
+        const baseIndent = indentMatch ? indentMatch[1] : '';
+        const bodyIndent = baseIndent + '    ';
+        const paramMatches = [...line.matchAll(/([a-zA-Z0-9_]+)\s*(?::[^=,)]+)?\s*=\s*(\[\]|\{\})/g)];
+        const initLines = paramMatches
+          .map(
+            (m) => `${bodyIndent}if ${m[1]} is None:\n${bodyIndent}    ${m[1]} = ${m[2]}`
+          )
+          .join('\n');
+        const fixedHeader = trimmed.replace(/=\s*(?:\[\]|\{\})/g, '=None');
+        const fullReplacement = initLines ? `${fixedHeader}\n${initLines}` : fixedHeader;
+
         findings.push({
           id: `py-mutable-default-${relFile}-${lineNum}`,
           ruleId: 'AI-QUAL-004',
@@ -287,12 +299,13 @@ export function analyzeAiCodeQualityAndMetrics(
             id: `fix-py-mutable-${relFile}-${lineNum}`,
             available: true,
             reliable: true,
-            confidence: 95,
+            confidence: 96,
             engine: 'deterministic',
-            summary: 'Remplacer la valeur par défaut mutable par `None`.',
+            summary:
+              'Remplacer la valeur par défaut mutable par `None` et initialiser une nouvelle instance dans le corps de la fonction.',
             filePath: relFile,
             beforeSnippet: trimmed,
-            afterSnippet: trimmed.replace(/=\s*(?:\[\]|\{\})/g, '=None'),
+            afterSnippet: fullReplacement,
             actionType: 'replace-snippet',
           },
         });

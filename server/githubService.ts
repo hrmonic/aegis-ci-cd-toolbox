@@ -95,15 +95,14 @@ export function parseGitHubOwnerRepo(remoteUrl: string): { owner: string; repo: 
   return null;
 }
 
-function runGitSafe(cwd: string, args: string[]): string {
+function runGitSafe(cwd: string, args: string[], preserveLeadingSpace = false): string {
   try {
-    return execFileSync('git', args, {
+    const out = execFileSync('git', args, {
       cwd,
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 15000,
-    })
-      .toString()
-      .trim();
+    }).toString();
+    return preserveLeadingSpace ? out.trimEnd() : out.trim();
   } catch {
     return '';
   }
@@ -146,12 +145,28 @@ export function inspectLocalGitStatus(projectPath: string): LocalGitStatus {
   const gitUserName = runGitSafe(resolved, ['config', 'user.name']);
   const gitUserEmail = runGitSafe(resolved, ['config', 'user.email']);
 
-  const porcelain = runGitSafe(resolved, ['status', '--porcelain']);
+  const porcelain = runGitSafe(resolved, ['status', '--porcelain'], true);
   const changedFiles: GitChangedFile[] = porcelain
     ? porcelain
-        .split('\n')
-        .filter(Boolean)
+        .split(/\r?\n/)
+        .filter((l) => l.trim().length > 0)
         .map((line) => {
+          const match = line.match(/^\s*([MADRCU?!]{1,2})\s+(.+)$/);
+          if (match) {
+            const status = match[1].trim() || 'M';
+            let filePath = match[2].trim();
+            if (filePath.includes(' -> ')) {
+              filePath = filePath.split(' -> ').pop()!.trim();
+            }
+            filePath = filePath.replace(/^"+|"+$/g, '');
+            if (
+              !fs.existsSync(path.join(resolved, filePath)) &&
+              fs.existsSync(path.join(resolved, '.' + filePath))
+            ) {
+              filePath = '.' + filePath;
+            }
+            return { status, path: filePath };
+          }
           const status = line.slice(0, 2).trim() || 'M';
           const filePath = line.slice(3).trim();
           return { status, path: filePath };
@@ -317,15 +332,29 @@ export function commitAndPushChanges(
     }
   }
 
-  // Stage files
+  // Stage files safely (auto-heal missing leading dot from older porcelain state and fallback to git add -A)
   if (options.filesToStage && options.filesToStage.length > 0) {
-    execFileSync('git', ['add', '--', ...options.filesToStage], { cwd: resolved });
+    const normalizedFiles = options.filesToStage.map((f) => {
+      const clean = f.trim();
+      if (
+        !fs.existsSync(path.join(resolved, clean)) &&
+        fs.existsSync(path.join(resolved, '.' + clean))
+      ) {
+        return '.' + clean;
+      }
+      return clean;
+    });
+    try {
+      execFileSync('git', ['add', '--', ...normalizedFiles], { cwd: resolved });
+    } catch {
+      execFileSync('git', ['add', '-A'], { cwd: resolved });
+    }
   } else {
     execFileSync('git', ['add', '-A'], { cwd: resolved });
   }
 
   // Check if there are staged changes to commit
-  const stagedPorcelain = runGitSafe(resolved, ['status', '--porcelain']);
+  const stagedPorcelain = runGitSafe(resolved, ['status', '--porcelain'], true);
   let commitHash = runGitSafe(resolved, ['rev-parse', '--short', 'HEAD']);
 
   if (stagedPorcelain.length > 0) {

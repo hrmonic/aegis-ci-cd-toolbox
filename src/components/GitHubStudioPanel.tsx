@@ -371,13 +371,28 @@ export const GitHubStudioPanel: React.FC<GitHubStudioPanelProps> = ({
     setCommitStatusMsg(null);
     setCreatedPrUrl(null);
     try {
+      // If user clicked "Commit, Push & Créer la PR" while still on base branch (e.g. main == main),
+      // automatically create and switch to the PR branch so GitHub PR creation succeeds.
+      const currentBranch = gitStatus?.branch || 'main';
+      const needsFeatureBranchForPr =
+        openPrAfter && !useNewBranch && currentBranch === prBaseBranch;
+      const effectiveCreateNewBranch = useNewBranch || needsFeatureBranchForPr;
+      const effectiveBranchName = effectiveCreateNewBranch
+        ? targetBranchName.trim() || `fix/aegis-remediation-${Date.now().toString().slice(-4)}`
+        : currentBranch;
+
+      if (needsFeatureBranchForPr) {
+        setUseNewBranch(true);
+        setTargetBranchName(effectiveBranchName);
+      }
+
       const res = await fetch('/api/git/commit-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectPath,
-          branchName: useNewBranch ? targetBranchName : gitStatus?.branch,
-          createNewBranch: useNewBranch,
+          branchName: effectiveBranchName,
+          createNewBranch: effectiveCreateNewBranch,
           commitMessage,
           commitDescription,
           filesToStage: selectedFiles,

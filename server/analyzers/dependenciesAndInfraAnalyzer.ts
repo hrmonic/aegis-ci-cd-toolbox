@@ -49,6 +49,18 @@ export function analyzeDependenciesDockerAndTests(
       const dockerContent = fs.readFileSync(dockerfilePath, 'utf-8');
       const dockerLines = dockerContent.split('\n');
 
+      const cmdLine =
+        [...dockerLines]
+          .reverse()
+          .find((l) => /^\s*(?:CMD|ENTRYPOINT)\s+/i.test(l))
+          ?.trim() ||
+        dockerLines.filter((l) => l.trim().length > 0).slice(-1)[0]?.trim() ||
+        '';
+      const isNodeDocker = /^\s*FROM\s+node/im.test(dockerContent);
+      const safeUserDirective = isNodeDocker ? 'USER node' : 'USER 10001';
+      const exposedPortMatch = dockerContent.match(/^\s*EXPOSE\s+(\d+)/im);
+      const detectedPort = exposedPortMatch ? exposedPortMatch[1] : isNodeDocker ? '3000' : '8000';
+
       // DOCKER-002: Running as root (missing USER directive)
       if (!/^\s*USER\s+/m.test(dockerContent)) {
         findings.push({
@@ -56,7 +68,7 @@ export function analyzeDependenciesDockerAndTests(
           ruleId: 'DOCKER-002',
           title: 'Conteneur Docker exécuté en tant que root (absence de directive USER)',
           description:
-            'Le `Dockerfile` ne bascule pas vers un utilisateur non-privilégié (`USER node` ou `USER appuser`).',
+            'Le `Dockerfile` ne bascule pas vers un utilisateur non-privilégié (`USER node` ou `USER 10001`).',
           impact: 'Risque d’escalade de privilèges en cas de compromission du processus conteneurisé.',
           category: 'containers-infra',
           severity: 'high',
@@ -66,15 +78,15 @@ export function analyzeDependenciesDockerAndTests(
           status: 'open',
           autoFix: {
             id: 'fix-docker-non-root',
-            available: true,
+            available: Boolean(cmdLine),
             reliable: true,
             confidence: 96,
             engine: 'deterministic',
-            summary: 'Ajouter `USER node` avant l’instruction CMD.',
+            summary: `Ajouter \`${safeUserDirective}\` juste avant l’instruction de démarrage.`,
             filePath: 'Dockerfile',
-            beforeSnippet: dockerLines.slice(-2).join('\n'),
-            afterSnippet: 'USER node\n' + dockerLines.slice(-2).join('\n'),
-            actionType: 'append-file',
+            beforeSnippet: cmdLine,
+            afterSnippet: `${safeUserDirective}\n${cmdLine}`,
+            actionType: 'replace-snippet',
           },
         });
       }
@@ -113,6 +125,7 @@ export function analyzeDependenciesDockerAndTests(
 
       // DOCKER-004: Missing HEALTHCHECK
       if (!/^\s*HEALTHCHECK\s+/m.test(dockerContent)) {
+        const healthCmd = `HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:${detectedPort}/health || exit 1`;
         findings.push({
           id: 'docker-missing-healthcheck',
           ruleId: 'DOCKER-004',
@@ -128,16 +141,15 @@ export function analyzeDependenciesDockerAndTests(
           status: 'open',
           autoFix: {
             id: 'fix-docker-healthcheck',
-            available: true,
+            available: Boolean(cmdLine),
             reliable: true,
             confidence: 94,
             engine: 'deterministic',
-            summary: 'Ajouter une sonde `HEALTHCHECK` standard au Dockerfile.',
+            summary: `Ajouter une sonde \`HEALTHCHECK\` sur le port exposé (${detectedPort}) avant CMD.`,
             filePath: 'Dockerfile',
-            beforeSnippet: dockerLines.slice(-1)[0] || '',
-            afterSnippet:
-              'HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:4177/api/health || exit 1',
-            actionType: 'append-file',
+            beforeSnippet: cmdLine,
+            afterSnippet: `${healthCmd}\n${cmdLine}`,
+            actionType: 'replace-snippet',
           },
         });
       }
@@ -387,13 +399,13 @@ export function analyzeDependenciesDockerAndTests(
         autoFix: {
           id: 'fix-pin-requirements',
           available: true,
-          reliable: true,
-          confidence: 90,
+          reliable: false,
+          confidence: 84,
           engine: 'hybrid-ai',
-          summary: 'Verrouiller les versions minimales compatibles dans requirements.txt.',
+          summary: 'Verrouiller les versions compatibles dans requirements.txt (via pip freeze ou IA).',
           filePath: 'requirements.txt',
           beforeSnippet: unpinnedLines.slice(0, 4).join('\n'),
-          afterSnippet: unpinnedLines.slice(0, 4).map((pkg) => `${pkg}>=1.0.0`).join('\n'),
+          afterSnippet: unpinnedLines.slice(0, 4).map((pkg) => `${pkg}>=0.1.0`).join('\n'),
           actionType: 'replace-snippet',
         },
       });

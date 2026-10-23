@@ -171,12 +171,29 @@ export function analyzeSecurityAndSecrets(
       for (const sig of SECRET_SIGNATURES) {
         const match = line.match(sig.regex);
         if (match) {
-          const replacementExpr =
-            ext === '.py'
+          const isEnvFile = path.basename(fullFile).startsWith('.env');
+          const replacementExpr = isEnvFile
+            ? '""'
+            : ext === '.py'
               ? `os.environ.get("${sig.envName}", "")`
               : ext === '.php'
                 ? `$_ENV['${sig.envName}'] ?? ''`
-                : `process.env.${sig.envName} || ""`;
+                : ext === '.go'
+                  ? `os.Getenv("${sig.envName}")`
+                  : ext === '.rs'
+                    ? `std::env::var("${sig.envName}").unwrap_or_default()`
+                    : `process.env.${sig.envName} || ""`;
+
+          const targetStack =
+            ext === '.py'
+              ? 'python'
+              : ext === '.php'
+                ? 'php-symfony'
+                : ext === '.go'
+                  ? 'go'
+                  : ext === '.rs'
+                    ? 'rust'
+                    : 'nodejs';
 
           findings.push({
             id: `sec-secret-${sig.id}-${relFile}-${lineNum}`,
@@ -186,7 +203,7 @@ export function analyzeSecurityAndSecrets(
             impact: 'Compromission immédiate de la ressource externe en cas de publication du dépôt.',
             category: 'security-secrets',
             severity: 'critical',
-            stack: ext === '.py' ? 'python' : ext === '.php' ? 'php-symfony' : 'nodejs',
+            stack: targetStack,
             filePath: relFile,
             line: lineNum,
             status: 'open',
@@ -297,10 +314,10 @@ export function analyzeSecurityAndSecrets(
           autoFix: {
             id: `fix-py-shell-${relFile}-${lineNum}`,
             available: line.includes('shell=True'),
-            reliable: true,
-            confidence: 93,
-            engine: 'deterministic',
-            summary: 'Désactiver `shell=True` (`shell=False`) en passant une liste d’arguments à `subprocess`.',
+            reliable: false,
+            confidence: 88,
+            engine: 'hybrid-ai',
+            summary: 'Désactiver `shell=True` (`shell=False`) en passant une liste d’arguments (`shlex.split`) à `subprocess`.',
             filePath: relFile,
             beforeSnippet: trimmed,
             afterSnippet: trimmed.replace(/shell\s*=\s*True/, 'shell=False'),
@@ -334,10 +351,13 @@ export function analyzeSecurityAndSecrets(
             reliable: false,
             confidence: 85,
             engine: 'hybrid-ai',
-            summary: 'Remplacer l’interpolation de chaîne par un paramètre lié (`?`).',
+            summary: 'Remplacer l’interpolation de chaîne par une requête préparée à paramètres liés (`?`).',
             filePath: relFile,
             beforeSnippet: trimmed,
-            afterSnippet: trimmed.replace(/\$\{[^}]+\}/g, '?'),
+            afterSnippet: trimmed
+              .replace(/\bf(["'])/, '$1')
+              .replace(/\$\{[^}]+\}/g, '?')
+              .replace(/\{[a-zA-Z0-9_.]+\}/g, '?'),
             actionType: 'replace-snippet',
           },
         });

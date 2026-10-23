@@ -92,6 +92,9 @@ export function analyzePipelines(
 
     // CICD-003: Missing timeout-minutes on jobs
     if (!content.includes('timeout-minutes:')) {
+      const runsOnIdx = lines.findIndex((l) => l.includes('runs-on:'));
+      const runsOnLine = runsOnIdx !== -1 ? lines[runsOnIdx] : '    runs-on: ubuntu-latest';
+      const indent = runsOnLine.match(/^(\s*)/)?.[1] || '    ';
       findings.push({
         id: `cicd-missing-timeout-${wf}`,
         ruleId: 'CICD-003',
@@ -103,7 +106,7 @@ export function analyzePipelines(
         severity: 'medium',
         stack: 'github-actions',
         filePath: wfRel,
-        line: Math.max(1, lines.findIndex((l) => l.includes('runs-on:')) + 1),
+        line: Math.max(1, runsOnIdx + 1),
         status: 'open',
         autoFix: {
           id: `fix-wf-timeout-${wf}`,
@@ -113,8 +116,8 @@ export function analyzePipelines(
           engine: 'deterministic',
           summary: 'Injecter `timeout-minutes: 15` après `runs-on:`.',
           filePath: wfRel,
-          beforeSnippet: 'runs-on: ubuntu-latest',
-          afterSnippet: 'runs-on: ubuntu-latest\n    timeout-minutes: 15',
+          beforeSnippet: runsOnLine.trim(),
+          afterSnippet: `${runsOnLine.trim()}\n${indent}timeout-minutes: 15`,
           actionType: 'replace-snippet',
         },
       });
@@ -191,11 +194,12 @@ export function analyzePipelines(
       }
 
       // CICD-006: Shell injection via untrusted GitHub context inside run:
-      if (
-        /\$\{\{\s*github\.event\.(issue\.title|issue\.body|pull_request\.title|pull_request\.body|comment\.body|commits\[.*?\]\.message|head_ref)\s*\}\}/.test(
-          line
-        )
-      ) {
+      const injectionMatch = line.match(
+        /(\$\{\{\s*github\.event\.(?:issue\.title|issue\.body|pull_request\.title|pull_request\.body|comment\.body|commits\[.*?\]\.message|head_ref)\s*\}\})/
+      );
+      if (injectionMatch) {
+        const expr = injectionMatch[1];
+        const sanitizedLine = line.trim().replace(expr, '$SAFE_EVENT_INPUT');
         findings.push({
           id: `cicd-script-injection-${wf}-${lineNum}`,
           ruleId: 'CICD-006',
@@ -213,12 +217,12 @@ export function analyzePipelines(
             id: `fix-wf-injection-${wf}-${lineNum}`,
             available: true,
             reliable: true,
-            confidence: 91,
+            confidence: 95,
             engine: 'hybrid-ai',
-            summary: 'Passer la valeur via une variable d’environnement `env:` plutôt qu’en interpolation directe.',
+            summary: 'Passer la valeur via une variable d’environnement `env: SAFE_EVENT_INPUT` plutôt qu’en interpolation directe.',
             filePath: wfRel,
             beforeSnippet: line.trim(),
-            afterSnippet: '# Sécurisé via variable env $PR_TITLE\n        echo "$SAFE_EVENT_INPUT"',
+            afterSnippet: `${sanitizedLine}\n        env:\n          SAFE_EVENT_INPUT: ${expr}`,
             actionType: 'replace-snippet',
           },
         });

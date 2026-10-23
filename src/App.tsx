@@ -261,10 +261,29 @@ export function App() {
   );
 
   useEffect(() => {
-    const onOnline = () => {
+    const onOnline = async () => {
       setIsOnline(true);
       const q = loadOfflineQueue();
       if (q.length > 0) {
+        for (const item of q) {
+          try {
+            if (item.type === 'apply-fix') {
+              await fetch('/api/fix', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectPath, fix: item.payload }),
+              });
+            } else if (item.type === 'sync-e2ee') {
+              await fetch('/api/sync/vault', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ envelope: item.payload }),
+              });
+            }
+          } catch {
+            // Keep remaining if still unreachable
+          }
+        }
         clearOfflineQueue();
         setOfflineQueue([]);
         pushSmartNotification(
@@ -493,11 +512,16 @@ export function App() {
   }, [selectedFinding, handleRunAIAnalysis]);
 
   const handleApplyFix = async (finding: DiagnosticFinding) => {
+    const effectivePatch =
+      selectedFinding?.id === finding.id && aiResult?.patchedCode
+        ? { ...finding.autoFix, afterSnippet: aiResult.patchedCode }
+        : finding.autoFix;
+
     if (effectiveOffline) {
       const nextQueue = enqueueOfflineAction({
         type: 'apply-fix',
         description: `Auto-Fix [${finding.ruleId}] on ${finding.filePath}`,
-        payload: finding.autoFix,
+        payload: effectivePatch,
       });
       setOfflineQueue(nextQueue);
     } else {
@@ -507,7 +531,7 @@ export function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             projectPath,
-            fix: finding.autoFix,
+            fix: effectivePatch,
           }),
         });
         refreshBackupsAndScripts(projectPath);
@@ -874,6 +898,7 @@ export function App() {
                   >
                     <option value="obsidian-cyber">Carbon Matte (Default)</option>
                     <option value="midnight-slate">Slate Graphite</option>
+                    <option value="emerald-matrix">Emerald Matrix</option>
                     <option value="high-contrast">Pure Black Contrast</option>
                   </select>
                 </div>
@@ -1660,7 +1685,7 @@ export function App() {
                           {selectedFinding.autoFix.beforeSnippet}
                         </div>
                         <div className="p-2.5 rounded bg-emerald-950/20 border-l-2 border-emerald-400/70 text-emerald-200/90 whitespace-pre">
-                          {selectedFinding.autoFix.afterSnippet}
+                          {aiResult?.patchedCode || selectedFinding.autoFix.afterSnippet}
                         </div>
                       </div>
                     </div>

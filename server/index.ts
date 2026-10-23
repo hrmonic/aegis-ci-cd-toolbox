@@ -9,6 +9,8 @@ import {
   listProjectBackups,
   rollbackLastFixOnDisk,
   detectProjectStacks,
+  exportSarifReport,
+  installGitPreCommitHook,
   STACK_CATALOG,
 } from './scanner.ts';
 import {
@@ -29,7 +31,20 @@ import type { StackId, E2EESyncEnvelope } from '../src/types/toolbox.ts';
 const app = express();
 const PORT = Number(process.env.PORT || 4177);
 
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error('Origine non autorisée par la politique de sécurité locale Aegis.'));
+      }
+    },
+  })
+);
 app.use(express.json({ limit: '5mb' }));
 
 const targetArgIdx = process.argv.indexOf('--target');
@@ -385,7 +400,10 @@ app.post('/api/runner/exec', (req, res) => {
     'composer validate',
   ];
 
-  if (!ALLOWED_PREFIXES.some((prefix) => command.startsWith(prefix))) {
+  if (
+    !ALLOWED_PREFIXES.some((prefix) => command.startsWith(prefix)) ||
+    /[;&|`$<>]/.test(command)
+  ) {
     res.status(400).json({ error: 'Commande non autorisée par la politique de sécurité du runner.' });
     return;
   }
@@ -411,14 +429,15 @@ app.post('/api/runner/exec', (req, res) => {
 app.post('/api/fs/open-editor', (req, res) => {
   const projectPath = path.resolve(req.body?.projectPath || DEFAULT_TARGET_DIR);
   const filePath = req.body?.filePath ? path.resolve(projectPath, req.body.filePath) : projectPath;
-  const line = Number(req.body?.line || 1);
+  const line = Math.max(1, Number(req.body?.line || 1));
 
-  if (!filePath.startsWith(projectPath)) {
+  const rel = path.relative(projectPath, filePath);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
     res.status(400).json({ error: 'Chemin invalide.' });
     return;
   }
 
-  exec(`code -g "${filePath}:${line}"`, { cwd: projectPath }, (err) => {
+  execFile('code', ['-g', `${filePath}:${line}`], { cwd: projectPath, shell: true }, (err) => {
     res.json({ opened: !err });
   });
 });
@@ -427,15 +446,42 @@ app.post('/api/fs/reveal-explorer', (req, res) => {
   const projectPath = path.resolve(req.body?.projectPath || DEFAULT_TARGET_DIR);
   const filePath = req.body?.filePath ? path.resolve(projectPath, req.body.filePath) : projectPath;
 
-  if (!filePath.startsWith(projectPath)) {
+  const rel = path.relative(projectPath, filePath);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
     res.status(400).json({ error: 'Chemin invalide.' });
     return;
   }
 
   const target = fs.existsSync(filePath) ? filePath : projectPath;
-  exec(`explorer.exe /select,"${target.replace(/\//g, '\\')}"`, () => {
+  execFile('explorer.exe', [`/select,${target.replace(/\//g, '\\')}`], () => {
     res.json({ revealed: true });
   });
+});
+
+app.post('/api/export/sarif', (req, res) => {
+  try {
+    const projectPath = req.body?.projectPath || DEFAULT_TARGET_DIR;
+    const selectedStacks: StackId[] | undefined = req.body?.selectedStacks;
+    const report = scanProject(projectPath, selectedStacks);
+    res.json(exportSarifReport(report));
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur export SARIF 2.1.0',
+    });
+  }
+});
+
+app.post('/api/git/install-hook', (req, res) => {
+  try {
+    const projectPath = req.body?.projectPath || DEFAULT_TARGET_DIR;
+    const result = installGitPreCommitHook(projectPath);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : 'Erreur installation hook pre-commit',
+    });
+  }
 });
 
 app.post('/api/generate-pipeline', (req, res) => {
@@ -844,6 +890,12 @@ app.post('/api/github/pulls/create', async (req, res) => {
     });
   }
 });
+
+// Serve compiled frontend Studio UI in production (`npm start` / Docker)
+const distDir = path.resolve(process.cwd(), 'dist');
+if (fs.existsSync(distDir)) {
+  app.use(express.static(distDir));
+}
 
 app.listen(PORT, () => {
   console.log(`🛡️  [Aegis CI/CD Server] Actif sur http://localhost:${PORT} (Cible: ${DEFAULT_TARGET_DIR})`);

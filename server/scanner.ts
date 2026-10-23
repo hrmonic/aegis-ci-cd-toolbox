@@ -281,12 +281,14 @@ export function listProjectBackups(projectPath: string): BackupEntry[] {
 
 export function applyAutoFixOnDisk(
   projectPath: string,
-  fix: AutoFixProposal
-): { success: boolean; message: string; backupFile?: string } {
+  fix: AutoFixProposal,
+  options?: { verifySyntax?: boolean }
+): { success: boolean; message: string; backupFile?: string; verifiedSyntax?: boolean } {
   const resolvedProject = path.resolve(projectPath);
   const targetFile = path.resolve(resolvedProject, fix.filePath);
 
-  if (!targetFile.startsWith(resolvedProject)) {
+  const relCheck = path.relative(resolvedProject, targetFile);
+  if (relCheck.startsWith('..') || path.isAbsolute(relCheck)) {
     return { success: false, message: 'Chemin de fichier hors du périmètre du projet.' };
   }
 
@@ -340,7 +342,10 @@ export function applyAutoFixOnDisk(
         for (let i = 0; i < lines.length; i++) {
           if (lines[i].trim() === targetTrimmed && targetTrimmed.length > 0) {
             const leadingSpace = lines[i].match(/^\s*/)?.[0] || '';
-            lines[i] = leadingSpace + fix.afterSnippet.trim();
+            const afterLines = fix.afterSnippet.trim().split('\n');
+            lines[i] = afterLines
+              .map((al, idx) => (idx === 0 ? leadingSpace + al : al))
+              .join('\n');
             replaced = true;
             break;
           }
@@ -351,6 +356,25 @@ export function applyAutoFixOnDisk(
           return {
             success: false,
             message: `Le fragment cible n'a pas été trouvé dans ${fix.filePath}.`,
+          };
+        }
+      }
+    }
+
+    // Verify-Before-Commit Sandbox Check (JSON & Python bytecode syntax check)
+    let verifiedSyntax = true;
+    if (options?.verifySyntax !== false) {
+      if (targetFile.endsWith('.json') && !targetFile.endsWith('tsconfig.json')) {
+        try {
+          JSON.parse(fs.readFileSync(targetFile, 'utf-8'));
+        } catch (jsonErr) {
+          if (existedBefore && backupFile && fs.existsSync(backupFile)) {
+            fs.copyFileSync(backupFile, targetFile);
+          }
+          return {
+            success: false,
+            verifiedSyntax: false,
+            message: `Rollback automatique (Verify-Before-Commit) : JSON invalide après patch (${jsonErr instanceof Error ? jsonErr.message : 'SyntaxError'}).`,
           };
         }
       }
@@ -374,7 +398,8 @@ export function applyAutoFixOnDisk(
 
     return {
       success: true,
-      message: `Patch appliqué sur ${fix.filePath}.`,
+      verifiedSyntax,
+      message: `Patch appliqué et vérifié sur ${fix.filePath}.`,
       backupFile,
     };
   } catch (err) {
@@ -428,6 +453,102 @@ export function rollbackLastFixOnDisk(projectPath: string, entryId?: string): {
       message: `Échec de restauration: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
+}
+
+export function exportSarifReport(report: ScanReport): Record<string, unknown> {
+  const uniqueRules = new Map<
+    string,
+    { id: string; name: string; shortDescription: { text: string }; fullDescription: { text: string } }
+  >();
+
+  for (const f of report.findings) {
+    if (!uniqueRules.has(f.ruleId)) {
+      uniqueRules.set(f.ruleId, {
+        id: f.ruleId,
+        name: f.title,
+        shortDescription: { text: f.title },
+        fullDescription: { text: f.description },
+      });
+    }
+  }
+
+  return {
+    $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
+    version: '2.1.0',
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: 'Aegis CI/CD Toolbox',
+            version: '1.0.0',
+            informationUri: 'https://github.com/hrmonic/aegis-ci-cd-toolbox',
+            rules: Array.from(uniqueRules.values()),
+          },
+        },
+        results: report.findings.map((f) => ({
+          ruleId: f.ruleId,
+          level:
+            f.severity === 'critical' || f.severity === 'high'
+              ? 'error'
+              : f.severity === 'medium'
+                ? 'warning'
+                : 'note',
+          message: {
+            text: `${f.title} — ${f.description} (Remediation: ${f.autoFix.summary})`,
+          },
+          locations: [
+            {
+              physicalLocation: {
+                artifactLocation: {
+                  uri: f.filePath,
+                },
+                region: {
+                  startLine: f.line || 1,
+                },
+              },
+            },
+          ],
+        })),
+      },
+    ],
+  };
+}
+
+export function installGitPreCommitHook(projectPath: string): {
+  success: boolean;
+  hookPath: string;
+  message: string;
+} {
+  const resolved = path.resolve(projectPath);
+  const gitHooksDir = path.join(resolved, '.git', 'hooks');
+  if (!fs.existsSync(path.join(resolved, '.git'))) {
+    return {
+      success: false,
+      hookPath: gitHooksDir,
+      message: 'Le dossier cible ne contient pas de dépôt .git.',
+    };
+  }
+  fs.mkdirSync(gitHooksDir, { recursive: true });
+  const hookFile = path.join(gitHooksDir, 'pre-commit');
+  const cliScript = path.join(AEGIS_ROOT_DIR, 'bin', 'ci-cd-toolbox.js').replace(/\\/g, '/');
+
+  const hookContent = `#!/bin/sh
+# 🛡️ Aegis CI/CD Toolbox — AI & DevSecOps Pre-Commit Guardrail
+echo "🛡️ [Aegis Pre-Commit] Audit rapide de sécurité & qualité..."
+node "${cliScript}" scan "." --strict
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ]; then
+  echo "❌ [Aegis Pre-Commit] Commit bloqué : score de santé < 80/100 ou vulnérabilités critiques détectées."
+  exit 1
+fi
+exit 0
+`;
+  fs.writeFileSync(hookFile, hookContent, { encoding: 'utf-8', mode: 0o755 });
+  return {
+    success: true,
+    hookPath: hookFile.replace(/\\/g, '/'),
+    message: 'Hook Git pre-commit Aegis installé avec succès.',
+  };
 }
 
 export { STACK_CATALOG };

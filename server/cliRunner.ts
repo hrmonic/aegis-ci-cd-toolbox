@@ -1,9 +1,10 @@
-import { scanProject, applyAutoFixOnDisk } from './scanner.ts';
+import { scanProject, applyAutoFixOnDisk, exportSarifReport } from './scanner.ts';
 
 const args = process.argv.slice(2);
 const mode = args[0] || 'scan';
 const targetPath = args[1] || process.cwd();
 const isJson = args.includes('--json');
+const isSarif = args.includes('--sarif');
 const isStrict = args.includes('--strict');
 
 const C = {
@@ -17,6 +18,11 @@ const C = {
 };
 
 const report = scanProject(targetPath);
+
+if (isSarif) {
+  console.log(JSON.stringify(exportSarifReport(report), null, 2));
+  process.exit(isStrict && report.overallScore < 80 ? 1 : 0);
+}
 
 if (isJson) {
   console.log(JSON.stringify(report, null, 2));
