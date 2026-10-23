@@ -8,7 +8,10 @@ import {
   applyAutoFixOnDisk,
   listProjectBackups,
   rollbackLastFixOnDisk,
+  exportSarifReport,
+  installGitPreCommitHook,
 } from '../server/scanner';
+import { extractPatchedCodeAndExplanation } from '../src/services/aiEngine';
 import { generateGitHubActionsWorkflow, generateHardenedDockerfile } from '../server/pipelineTemplates';
 import { encryptSyncPayload, decryptSyncEnvelope } from '../src/services/e2eeCrypto';
 import {
@@ -136,12 +139,66 @@ describe('🛡️ Aegis CI/CD Toolbox — Suite de Tests Unitaires & Intégratio
       expect(report.metrics!.rulesEvaluated).toBe(35);
       expect(report.metrics!.totalLinesOfCode).toBeGreaterThan(5);
 
-      // Test line-aware Auto-Fix on Python mutable default argument
+      // Test line-aware Auto-Fix on Python mutable default argument (with safe body initialization)
       const mutableFinding = report.findings.find((f) => f.ruleId === 'AI-QUAL-004')!;
       const fixRes = applyAutoFixOnDisk(tempDir, mutableFinding.autoFix);
       expect(fixRes.success).toBe(true);
       const updatedPy = fs.readFileSync(path.join(tempDir, 'app.py'), 'utf-8');
       expect(updatedPy).toContain('bucket=None');
+      expect(updatedPy).toContain('if bucket is None:');
+      expect(updatedPy).toContain('bucket = []');
+
+      // Test SARIF 2.1.0 Export
+      const sarif = exportSarifReport(report) as { version: string; runs: Array<{ results: unknown[] }> };
+      expect(sarif.version).toBe('2.1.0');
+      expect(sarif.runs[0].results.length).toBe(report.findings.length);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('valide la boucle transactionnelle Verify-Before-Commit, le hook Git pre-commit et l extraction de patch IA', () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-verify-tx-'));
+    try {
+      // 1. Create valid package.json and test Verify-Before-Commit rollback if a broken JSON patch is attempted
+      const pkgPath = path.join(tempDir, 'package.json');
+      fs.writeFileSync(pkgPath, '{\n  "name": "tx-test",\n  "version": "1.0.0"\n}\n', 'utf-8');
+
+      const badPatchRes = applyAutoFixOnDisk(tempDir, {
+        id: 'fix-tx-test',
+        available: true,
+        reliable: true,
+        confidence: 95,
+        engine: 'deterministic',
+        summary: 'Test de rollback transactionnel',
+        actionType: 'replace-snippet',
+        filePath: 'package.json',
+        beforeSnippet: '"version": "1.0.0"',
+        afterSnippet: '"version": 1.0.0_BROKEN_JSON,,,',
+      });
+      expect(badPatchRes.success).toBe(false);
+      expect(badPatchRes.message).toContain('Verify-Before-Commit');
+      // Verify original file is intact after automatic rollback
+      const restoredPkg = fs.readFileSync(pkgPath, 'utf-8');
+      expect(JSON.parse(restoredPkg).version).toBe('1.0.0');
+
+      // 2. Test Git Pre-Commit Hook installation
+      fs.mkdirSync(path.join(tempDir, '.git'), { recursive: true });
+      const hookRes = installGitPreCommitHook(tempDir);
+      expect(hookRes.success).toBe(true);
+      expect(fs.existsSync(hookRes.hookPath)).toBe(true);
+
+      // 3. Test AI markdown code block extraction for hybrid remediation
+      const sampleAiOutput = [
+        'Voici la correction DevSecOps :',
+        '```typescript',
+        'const apiKey = process.env.API_KEY ?? "";',
+        '```',
+        'Cela élimine le secret en dur.',
+      ].join('\n');
+      const extracted = extractPatchedCodeAndExplanation(sampleAiOutput, 'fallback()');
+      expect(extracted.patchedCode).toBe('const apiKey = process.env.API_KEY ?? "";');
+      expect(extracted.explanation).toContain('Voici la correction DevSecOps');
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -222,7 +279,7 @@ describe('🛡️ Aegis CI/CD Toolbox — Suite de Tests Unitaires & Intégratio
     expect(criticalNotif.deferredBecauseOfFlow).toBe(false);
   });
 
-  it('initialise un dépôt Git local, configure le remote GitHub, crée une branche et effectue un commit post-correction', () => {
+  it('initialise un dépôt Git local, configure le remote GitHub, crée une branche et effectue un commit post-correction', async () => {
     expect(parseGitHubOwnerRepo('https://github.com/hrmonic/aegis-ci-cd-toolbox.git')).toEqual({
       owner: 'hrmonic',
       repo: 'aegis-ci-cd-toolbox',
@@ -287,8 +344,45 @@ describe('🛡️ Aegis CI/CD Toolbox — Suite de Tests Unitaires & Intégratio
         pushToOrigin: false,
       });
       expect(dotCommit.success).toBe(true);
+
+      // Test automatic remote sync when remote has commits not present locally ("fetch first" / non-fast-forward)
+      const bareRemote = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-bare-remote-'));
+      const secondClone = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-second-clone-'));
+      try {
+        // Initialize bare remote repository and push tempDir's main branch to it
+        const { execFileSync } = await import('node:child_process');
+        execFileSync('git', ['init', '--bare', '-b', 'main'], { cwd: bareRemote });
+        configureLocalGitRepo(tempDir, { remoteOriginUrl: bareRemote });
+        commitAndPushChanges(tempDir, {
+          branchName: 'main',
+          commitMessage: 'chore: sync main to bare remote',
+          pushToOrigin: true,
+        });
+
+        // Now initialize secondClone independently (simulating a ZIP download or out-of-sync local folder)
+        fs.writeFileSync(path.join(secondClone, 'Dockerfile'), 'FROM node:22-alpine\nUSER node\n', 'utf-8');
+        configureLocalGitRepo(secondClone, {
+          initIfMissing: true,
+          defaultBranch: 'main',
+          userName: 'Réda Touzani',
+          userEmail: 'hrmonic@users.noreply.github.com',
+          remoteOriginUrl: bareRemote,
+        });
+
+        // Pushing from secondClone to bareRemote/main would normally fail with "! [rejected] main -> main (fetch first)"
+        const syncedPush = commitAndPushChanges(secondClone, {
+          branchName: 'main',
+          commitMessage: 'fix(docker): add hardened Dockerfile on out-of-sync repo',
+          pushToOrigin: true,
+        });
+        expect(syncedPush.success).toBe(true);
+        expect(syncedPush.pushed).toBe(true);
+      } finally {
+        fs.rmSync(bareRemote, { recursive: true, force: true });
+        fs.rmSync(secondClone, { recursive: true, force: true });
+      }
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
-  });
+  }, 15000);
 });

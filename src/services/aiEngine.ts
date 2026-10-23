@@ -163,10 +163,10 @@ ${finding.autoFix.afterSnippet}
 Réponds avec un bloc de code \`\`\` contenant uniquement le code de remplacement exact, suivi d'une brève justification technique.`;
 }
 
-function extractPatchedCodeAndExplanation(
+export function extractPatchedCodeAndExplanation(
   rawText: string,
   fallbackPatch: string,
-  fallbackSummary: string
+  fallbackSummary = ''
 ): { patchedCode: string; explanation: string } {
   if (!rawText || !rawText.trim()) {
     return { patchedCode: fallbackPatch, explanation: fallbackSummary };

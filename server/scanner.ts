@@ -15,6 +15,8 @@ import { analyzePipelines } from './analyzers/pipelineAnalyzer.ts';
 import { analyzeSecurityAndSecrets } from './analyzers/securityAnalyzer.ts';
 import { analyzeAiCodeQualityAndMetrics } from './analyzers/aiCodeQualityAnalyzer.ts';
 import { analyzeDependenciesDockerAndTests } from './analyzers/dependenciesAndInfraAnalyzer.ts';
+import { analyzeTypeScriptAst } from './analyzers/astAnalyzer.ts';
+import { analyzeDependenciesForKnownCves } from './analyzers/osvVulnerabilityScanner.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -169,13 +171,15 @@ export function scanProject(projectPath: string, customStacks?: StackId[]): Scan
 
   const allFiles = walkFiles(resolvedPath);
 
-  // Execute the 4 specialized deep diagnostic analyzers (35 rules total)
+  // Execute the specialized deep diagnostic analyzers (Regex + TypeScript AST + OSV.dev CVE Engine)
   const pipelineFindings = analyzePipelines(resolvedPath, selectedStacks);
   const securityFindings = analyzeSecurityAndSecrets(resolvedPath, allFiles, detectedStacks);
   const { findings: aiQualFindings, metrics } = analyzeAiCodeQualityAndMetrics(
     resolvedPath,
     allFiles
   );
+  const astResult = analyzeTypeScriptAst(resolvedPath, allFiles);
+  const osvCveFindings = analyzeDependenciesForKnownCves(resolvedPath);
   const infraAndDepsFindings = analyzeDependenciesDockerAndTests(
     resolvedPath,
     allFiles,
@@ -184,10 +188,22 @@ export function scanProject(projectPath: string, customStacks?: StackId[]): Scan
     metrics.testFilesCount
   );
 
+  // Deduplicate AST-001 if AI-QUAL-001 already reported the exact same file:line
+  const existingEmptyCatchLocations = new Set(
+    aiQualFindings
+      .filter((f) => f.ruleId === 'AI-QUAL-001')
+      .map((f) => `${f.filePath}:${f.line}`)
+  );
+  const deduplicatedAstFindings = astResult.findings.filter(
+    (f) => !(f.ruleId === 'AST-001' && existingEmptyCatchLocations.has(`${f.filePath}:${f.line}`))
+  );
+
   const findings: DiagnosticFinding[] = [
     ...pipelineFindings,
     ...securityFindings,
     ...aiQualFindings,
+    ...deduplicatedAstFindings,
+    ...osvCveFindings,
     ...infraAndDepsFindings,
   ];
 

@@ -95,6 +95,34 @@ export function parseGitHubOwnerRepo(remoteUrl: string): { owner: string; repo: 
   return null;
 }
 
+function sanitizeGitError(err: unknown): Error {
+  const raw = err instanceof Error ? err.message : String(err);
+  const redacted = raw
+    .replace(/AUTHORIZATION:\s*basic\s+[A-Za-z0-9+/=]+/gi, 'AUTHORIZATION: basic [REDACTED]')
+    .replace(/x-access-token:[^@\s]+@/gi, 'x-access-token:[REDACTED]@');
+  return new Error(redacted);
+}
+
+function execGitWithAuth(cwd: string, authHeaderArg: string | null, args: string[], timeout = 45000): string {
+  const fullArgs = authHeaderArg ? ['-c', authHeaderArg, ...args] : args;
+  try {
+    return execFileSync('git', fullArgs, {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout,
+    })
+      .toString()
+      .trim();
+  } catch (err: unknown) {
+    const stderr =
+      err && typeof err === 'object' && 'stderr' in err && Buffer.isBuffer((err as { stderr?: Buffer }).stderr)
+        ? (err as { stderr: Buffer }).stderr.toString('utf-8').trim()
+        : '';
+    const combined = stderr ? `${(err as Error).message}\n${stderr}` : String(err);
+    throw sanitizeGitError(new Error(combined));
+  }
+}
+
 function runGitSafe(cwd: string, args: string[], preserveLeadingSpace = false): string {
   try {
     const out = execFileSync('git', args, {
@@ -327,7 +355,11 @@ export function commitAndPushChanges(
       }
       activeBranch = cleanBranch;
     } else if (cleanBranch !== activeBranch) {
-      execFileSync('git', ['checkout', cleanBranch], { cwd: resolved });
+      try {
+        execFileSync('git', ['checkout', cleanBranch], { cwd: resolved });
+      } catch {
+        execFileSync('git', ['checkout', '-b', cleanBranch], { cwd: resolved });
+      }
       activeBranch = cleanBranch;
     }
   }
@@ -377,29 +409,62 @@ export function commitAndPushChanges(
 
     const { token } = resolveGitHubToken(options.githubToken);
     const ownerRepo = parseGitHubOwnerRepo(remoteUrl);
+    const authHeaderArg =
+      token && ownerRepo && remoteUrl.startsWith('https://')
+        ? `http.https://github.com/.extraheader=AUTHORIZATION: basic ${Buffer.from(
+            `x-access-token:${token}`,
+            'utf-8'
+          ).toString('base64')}`
+        : null;
 
-    if (token && ownerRepo && remoteUrl.startsWith('https://')) {
-      // Push using transient HTTP Basic Auth header so token is never written to .git/config
-      const basicAuth = Buffer.from(`x-access-token:${token}`, 'utf-8').toString('base64');
-      execFileSync(
-        'git',
-        [
-          '-c',
-          `http.https://github.com/.extraheader=AUTHORIZATION: basic ${basicAuth}`,
-          'push',
-          '-u',
-          'origin',
-          activeBranch,
-        ],
-        { cwd: resolved, timeout: 45000 }
-      );
+    try {
+      execGitWithAuth(resolved, authHeaderArg, ['push', '-u', 'origin', activeBranch]);
       pushed = true;
-    } else {
-      execFileSync('git', ['push', '-u', 'origin', activeBranch], {
-        cwd: resolved,
-        timeout: 45000,
-      });
-      pushed = true;
+    } catch (pushErr) {
+      const errMsg = pushErr instanceof Error ? pushErr.message : String(pushErr);
+      if (/fetch first|non-fast-forward|rejected/i.test(errMsg)) {
+        // Remote has commits not present locally: auto-sync (fetch + rebase or merge unrelated histories keeping local fixes)
+        try {
+          execGitWithAuth(resolved, authHeaderArg, [
+            'pull',
+            '--rebase',
+            '--autostash',
+            '-X',
+            'theirs',
+            'origin',
+            activeBranch,
+          ]);
+        } catch {
+          // Abort rebase if it stopped on unrelated histories or conflict
+          runGitSafe(resolved, ['rebase', '--abort']);
+          execGitWithAuth(resolved, authHeaderArg, ['fetch', 'origin', activeBranch]);
+          try {
+            execGitWithAuth(resolved, authHeaderArg, [
+              'merge',
+              `origin/${activeBranch}`,
+              '--allow-unrelated-histories',
+              '-X',
+              'ours',
+              '--no-edit',
+            ]);
+          } catch {
+            // If add/add conflict occurred during unrelated history merge, keep local patched files ("ours")
+            runGitSafe(resolved, ['checkout', '--ours', '.']);
+            runGitSafe(resolved, ['add', '-A']);
+            runGitSafe(resolved, [
+              'commit',
+              '--no-edit',
+              '-m',
+              options.commitMessage.trim() || 'fix(ci-cd): merge remote history & apply Aegis patches',
+            ]);
+          }
+        }
+        // Retry push after integrating remote commits
+        execGitWithAuth(resolved, authHeaderArg, ['push', '-u', 'origin', activeBranch]);
+        pushed = true;
+      } else {
+        throw pushErr;
+      }
     }
   }
 
