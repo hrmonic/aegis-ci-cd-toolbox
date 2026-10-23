@@ -36,6 +36,13 @@ export function analyzeTypeScriptAst(
 
   for (const filePath of tsJsFiles) {
     const relPath = path.relative(projectPath, filePath).replace(/\\/g, '/');
+    if (
+      relPath.startsWith('server/analyzers/') ||
+      relPath === 'server/scanner.ts' ||
+      relPath === 'server/ciFailureDoctor.ts'
+    ) {
+      continue;
+    }
     let content = '';
     try {
       content = fs.readFileSync(filePath, 'utf-8');

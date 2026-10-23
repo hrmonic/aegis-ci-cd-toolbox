@@ -501,13 +501,16 @@ export async function inspectAndDiagnoseGitHubRun(
     raw_details?: string;
   }
 
+  const { token } = resolveGitHubToken(customToken);
+  if (!token) {
+    throw new Error('Authentification GitHub requise pour inspecter ce workflow.');
+  }
+
   const [runDetail, jobsData] = await Promise.all([
-    githubApiRequest<RawRunDetail>(`/repos/${owner}/${repo}/actions/runs/${runId}`, {
-      customToken,
-    }),
+    githubApiRequest<RawRunDetail>(`/repos/${owner}/${repo}/actions/runs/${runId}`, token),
     githubApiRequest<RawJobsResponse>(
       `/repos/${owner}/${repo}/actions/runs/${runId}/jobs`,
-      { customToken }
+      token
     ),
   ]);
 
@@ -518,8 +521,6 @@ export async function inspectAndDiagnoseGitHubRun(
 
   const collectedLogParts: string[] = [];
   const failedStepNames: string[] = [];
-
-  const { token } = resolveGitHubToken(customToken);
 
   for (const job of failedJobs.length > 0 ? failedJobs : jobs.slice(0, 2)) {
     for (const step of job.steps || []) {
@@ -533,7 +534,7 @@ export async function inspectAndDiagnoseGitHubRun(
     try {
       const annotations = await githubApiRequest<RawAnnotation[]>(
         `/repos/${owner}/${repo}/check-runs/${job.id}/annotations`,
-        { customToken }
+        token
       );
       for (const ann of annotations || []) {
         if (ann.path && ann.start_line) {

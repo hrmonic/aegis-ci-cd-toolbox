@@ -26,6 +26,12 @@ import {
   type GitHubRepoItem,
   type GitHubUserProfile,
 } from './githubService.ts';
+import { scanDependenciesWithOsvLive } from './analyzers/osvVulnerabilityScanner.ts';
+import {
+  listGitHubWorkflowRuns,
+  inspectAndDiagnoseGitHubRun,
+  diagnoseCiFailureLog,
+} from './ciFailureDoctor.ts';
 import type { StackId, E2EESyncEnvelope } from '../src/types/toolbox.ts';
 
 const app = express();
@@ -887,6 +893,84 @@ app.post('/api/github/pulls/create', async (req, res) => {
   } catch (err) {
     res.status(500).json({
       error: err instanceof Error ? err.message : 'Erreur création de la Pull Request GitHub',
+    });
+  }
+});
+
+// ============================================================================
+// PHASE 3 : OSV.DEV SUPPLY-CHAIN CVE SCANNER & CI FAILURE DOCTOR ENDPOINTS
+// ============================================================================
+
+app.post('/api/security/osv-scan', async (req, res) => {
+  try {
+    const targetPath = req.body?.projectPath || DEFAULT_TARGET_DIR;
+    const osvResult = await scanDependenciesWithOsvLive(targetPath);
+    const updatedReport = scanProject(targetPath);
+    res.json({
+      ...osvResult,
+      updatedReport,
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur lors du scan CVE OSV.dev',
+    });
+  }
+});
+
+app.post('/api/github/actions/runs', async (req, res) => {
+  try {
+    const { owner, repo, token } = req.body || {};
+    if (!owner || !repo) {
+      res.status(400).json({ error: 'Paramètres owner et repo requis.' });
+      return;
+    }
+    const result = await listGitHubWorkflowRuns(String(owner), String(repo), token);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur lecture des workflows GitHub Actions',
+    });
+  }
+});
+
+app.post('/api/github/actions/diagnose-run', async (req, res) => {
+  try {
+    const targetPath = req.body?.projectPath || DEFAULT_TARGET_DIR;
+    const { owner, repo, runId, token } = req.body || {};
+    if (!owner || !repo || !runId) {
+      res.status(400).json({ error: 'Paramètres owner, repo et runId requis.' });
+      return;
+    }
+    const report = await inspectAndDiagnoseGitHubRun(
+      targetPath,
+      String(owner),
+      String(repo),
+      Number(runId),
+      token
+    );
+    res.json({ report });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur diagnostic du run GitHub Actions',
+    });
+  }
+});
+
+app.post('/api/github/actions/diagnose-log', (req, res) => {
+  try {
+    const targetPath = req.body?.projectPath || DEFAULT_TARGET_DIR;
+    const rawLog = String(req.body?.rawLog || '');
+    if (!rawLog.trim()) {
+      res.status(400).json({ error: 'Journal CI/CD vide.' });
+      return;
+    }
+    const report = diagnoseCiFailureLog(targetPath, rawLog, {
+      source: 'manual-log',
+    });
+    res.json({ report });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur diagnostic du journal CI/CD',
     });
   }
 });
