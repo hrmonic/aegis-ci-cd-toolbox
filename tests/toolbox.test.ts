@@ -16,6 +16,12 @@ import {
   evaluateNotificationDelivery,
   DEFAULT_NOTIFICATION_RULES,
 } from '../src/services/adaptiveNotify';
+import {
+  parseGitHubOwnerRepo,
+  configureLocalGitRepo,
+  commitAndPushChanges,
+  inspectLocalGitStatus,
+} from '../server/githubService';
 
 describe('🛡️ Aegis CI/CD Toolbox — Suite de Tests Unitaires & Intégration', () => {
   it('détecte automatiquement les stacks de ci-cd-toolbox et obtient un score de santé 100/100', () => {
@@ -214,5 +220,53 @@ describe('🛡️ Aegis CI/CD Toolbox — Suite de Tests Unitaires & Intégratio
     );
     expect(criticalNotif.deliveredImmediately).toBe(true);
     expect(criticalNotif.deferredBecauseOfFlow).toBe(false);
+  });
+
+  it('initialise un dépôt Git local, configure le remote GitHub, crée une branche et effectue un commit post-correction', () => {
+    expect(parseGitHubOwnerRepo('https://github.com/hrmonic/aegis-ci-cd-toolbox.git')).toEqual({
+      owner: 'hrmonic',
+      repo: 'aegis-ci-cd-toolbox',
+    });
+    expect(parseGitHubOwnerRepo('git@github.com:hrmonic/aegis-ci-cd-toolbox.git')).toEqual({
+      owner: 'hrmonic',
+      repo: 'aegis-ci-cd-toolbox',
+    });
+
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-git-hub-test-'));
+    try {
+      fs.writeFileSync(path.join(tempDir, 'README.md'), '# Test Repo\n', 'utf-8');
+
+      const cfgRes = configureLocalGitRepo(tempDir, {
+        initIfMissing: true,
+        defaultBranch: 'main',
+        userName: 'Réda Touzani',
+        userEmail: 'hrmonic@users.noreply.github.com',
+        remoteOriginUrl: 'https://github.com/hrmonic/test-repo.git',
+      });
+      expect(cfgRes.success).toBe(true);
+      expect(cfgRes.status.isGitRepo).toBe(true);
+      expect(cfgRes.status.parsedOwnerRepo).toEqual({ owner: 'hrmonic', repo: 'test-repo' });
+      expect(cfgRes.status.changedFiles.length).toBe(1);
+
+      const commitRes = commitAndPushChanges(tempDir, {
+        branchName: 'fix/aegis-remediation',
+        createNewBranch: true,
+        commitMessage: 'fix(ci-cd): apply Aegis automated patches',
+        commitDescription: '- [SEC-001] Added .gitignore',
+        pushToOrigin: false,
+      });
+      expect(commitRes.success).toBe(true);
+      expect(commitRes.branch).toBe('fix/aegis-remediation');
+      expect(commitRes.commitHash.length).toBeGreaterThanOrEqual(5);
+
+      const finalStatus = inspectLocalGitStatus(tempDir);
+      expect(finalStatus.changedFiles.length).toBe(0);
+      expect(finalStatus.recentCommits.length).toBe(1);
+      expect(finalStatus.recentCommits[0].subject).toBe(
+        'fix(ci-cd): apply Aegis automated patches'
+      );
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   });
 });

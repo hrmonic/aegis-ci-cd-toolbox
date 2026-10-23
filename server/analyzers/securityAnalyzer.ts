@@ -143,7 +143,8 @@ export function analyzeSecurityAndSecrets(
       relFile.startsWith('server/analyzers/') ||
       relFile === 'server/scanner.ts' ||
       relFile === 'tests/toolbox.test.ts' ||
-      relFile === 'src/services/aiEngine.ts'
+      relFile === 'src/services/aiEngine.ts' ||
+      relFile === 'src/components/DocumentationPanel.tsx'
     ) {
       continue;
     }

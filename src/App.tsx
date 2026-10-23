@@ -68,10 +68,12 @@ import { AdaptiveNotificationsPanel } from './components/AdaptiveNotificationsPa
 import { UxExperienceLabModal } from './components/UxExperienceLabModal';
 import { FolderPickerModal } from './components/FolderPickerModal';
 import { DocumentationPanel } from './components/DocumentationPanel';
+import { GitHubStudioPanel } from './components/GitHubStudioPanel';
 
 type StudioTabId =
   | 'overview'
   | 'diagnostics'
+  | 'github'
   | 'runner'
   | 'pipelines'
   | 'ai-engine'
@@ -718,6 +720,7 @@ export function App() {
   const tabs: { id: StudioTabId; label: string; count?: number }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'diagnostics', label: 'Diagnostics', count: openFindingsCount },
+    { id: 'github', label: 'GitHub & PRs' },
     { id: 'runner', label: 'Task Runner', count: runnerActions.length },
     { id: 'pipelines', label: 'Pipelines' },
     { id: 'ai-engine', label: 'AI Engine' },
@@ -946,6 +949,16 @@ export function App() {
           >
             <History className="w-3 h-3 text-zinc-400" />
             <span>History ({backupHistory.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('github')}
+            title="Commit, Push, Create PR & Manage GitHub Repositories"
+            className="px-3 py-1.5 rounded-md bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/40 text-teal-200 text-xs font-medium flex items-center gap-1.5 transition"
+          >
+            <GitBranch className="w-3 h-3 text-teal-400" />
+            <span>Commit / PR / GitHub</span>
           </button>
 
           <button
@@ -1599,9 +1612,19 @@ export function App() {
                       </button>
 
                       {selectedFinding.status === 'fixed' ? (
-                        <span className="px-2.5 py-1.5 rounded bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 text-xs font-mono">
-                          Patch Applied
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1.5 rounded bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 text-xs font-mono">
+                            Patch Applied
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('github')}
+                            className="px-3 py-1.5 rounded-md bg-teal-500 hover:bg-teal-400 text-zinc-950 text-xs font-semibold flex items-center gap-1.5 transition"
+                          >
+                            <GitBranch className="w-3.5 h-3.5" />
+                            Commit / Push / PR →
+                          </button>
+                        </div>
                       ) : (
                         <button
                           type="button"
@@ -2066,6 +2089,18 @@ export function App() {
               }}
             />
           </div>
+        )}
+
+        {/* -------------------------------------------------------------------
+            TAB 2.5: GITHUB REPOSITORIES, COMMIT, PUSH & PULL REQUESTS
+        ------------------------------------------------------------------- */}
+        {activeTab === 'github' && (
+          <GitHubStudioPanel
+            projectPath={projectPath}
+            report={report}
+            onNotify={(title, msg, sev) => pushSmartNotification(title, msg, sev, 'pipeline-cicd')}
+            onScanRefresh={() => runScan()}
+          />
         )}
 
         {/* -------------------------------------------------------------------
