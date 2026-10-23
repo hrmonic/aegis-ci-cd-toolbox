@@ -1,8 +1,8 @@
 # 🛡️ Aegis CI/CD Toolbox — Studio DevOps & Auto-Correction IA Hybride
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-indigo.svg)](./LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-2dd4bf.svg)](./LICENSE)
+[![Creator: Réda Touzani](https://img.shields.io/badge/Author-R%C3%A9da%20Touzani-18181b.svg)](https://github.com/hrmonic)
 [![Stack: Multi-Stack](https://img.shields.io/badge/Stacks-Node%20%7C%20Python%20%7C%20PHP%20%7C%20Go%20%7C%20Rust%20%7C%20Docker-10b981.svg)](https://github.com/hrmonic/aegis-ci-cd-toolbox)
-[![AI Engine: Hybrid + Local](https://img.shields.io/badge/AI-Gemini%20%7C%20OpenAI%20%7C%20Free%20APIs%20%7C%20Ollama%20Local-8b5cf6.svg)](https://github.com/hrmonic/aegis-ci-cd-toolbox)
 [![Security: E2EE AES-256-GCM](https://img.shields.io/badge/Sync-E2EE%20AES--256--GCM-f59e0b.svg)](https://github.com/hrmonic/aegis-ci-cd-toolbox)
 
 **Aegis CI/CD Toolbox** est un utilitaire de diagnostic CI/CD et un Studio DevOps modulaire open-source conçu pour accompagner le développement d'applications (notamment assisté par IA) afin de garantir un code **zéro bug, robuste, sécurisé et parfaitement maintenable**.
@@ -113,6 +113,7 @@ ci-cd-toolbox/
 
 ---
 
-## 📄 Licence
+## 👤 Crédits & Licence Open Source
 
-Distribué sous licence **MIT**. Créé pour [hrmonic](https://github.com/hrmonic).
+- **Créateur & Auteur** : **Réda Touzani** — [https://github.com/hrmonic](https://github.com/hrmonic)
+- **Licence Open Source** : Distribué sous licence **[Apache License 2.0](./LICENSE)** (`Copyright © 2026 Réda Touzani`).

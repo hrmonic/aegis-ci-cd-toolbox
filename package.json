@@ -35,8 +35,11 @@
     "offline-first",
     "toolbox"
   ],
-  "author": "hrmonic",
-  "license": "MIT",
+  "author": {
+    "name": "Réda Touzani",
+    "url": "https://github.com/hrmonic"
+  },
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/hrmonic/aegis-ci-cd-toolbox.git"

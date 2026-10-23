@@ -1,0 +1,54 @@
+name: "CI/CD Pipeline — Quality & Security"
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+# Principe de moindre privilège pour le jeton GITHUB_TOKEN
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node-quality-and-tests:
+    name: "Node.js / TypeScript — Quality, Types & Tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Static typecheck & lint
+        run: npm run lint --if-present
+
+      - name: Run unit & integration tests
+        run: npm test --if-present
+
+      - name: Verify production build
+        run: npm run build --if-present
+
+  docker-hardening-check:
+    name: "Docker — Multi-Stage Build Validation"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Dockerfile build
+        run: |
+          if [ -f Dockerfile ]; then
+            docker build --no-cache -t aegis-ci-check:local .
+          fi

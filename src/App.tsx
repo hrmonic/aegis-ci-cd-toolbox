@@ -180,6 +180,7 @@ export function App() {
   const [offlineForced, setOfflineForced] = useState<boolean>(false);
   const [offlineQueue, setOfflineQueue] = useState(() => loadOfflineQueue());
   const [copiedCmd, setCopiedCmd] = useState<boolean>(false);
+  const [showAboutModal, setShowAboutModal] = useState<boolean>(false);
 
   // Pipeline Generator Tab
   const [pipelineTab, setPipelineTab] = useState<'github' | 'docker'>('github');
@@ -869,6 +870,20 @@ export function App() {
                     <option value="midnight-slate">Slate Graphite</option>
                     <option value="high-contrast">Pure Black Contrast</option>
                   </select>
+                </div>
+
+                <div className="pt-2 border-t border-[#20222a]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSettingsMenu(false);
+                      setShowAboutModal(true);
+                    }}
+                    className="w-full px-2.5 py-1.5 rounded bg-[#181a22] hover:bg-[#222530] border border-[#272a35] text-zinc-200 text-xs font-medium text-left flex items-center justify-between transition"
+                  >
+                    <span>License, Credits & Support</span>
+                    <span className="text-[10px] font-mono text-teal-400">Apache 2.0</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -2209,6 +2224,13 @@ export function App() {
                     handleExportMarkdownReport();
                   },
                 },
+                {
+                  label: 'License, Credits & Support (Apache 2.0 — Réda Touzani)',
+                  action: () => {
+                    setShowCmdPalette(false);
+                    setShowAboutModal(true);
+                  },
+                },
               ]
                 .filter((item) =>
                   !cmdQuery.trim()
@@ -2255,6 +2277,144 @@ export function App() {
               <div className="p-3 rounded bg-[#090a0c] border border-[#1e2028] space-y-1">
                 <div className="text-zinc-500"># Export standalone offline tarball (.tgz)</div>
                 <div className="text-zinc-200">npm run pack:toolbox</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          PERSISTENT CREDITS & OPEN SOURCE LICENSE FOOTER
+      ===================================================================== */}
+      <footer className="mt-auto border-t border-[#191b22] bg-[#07080a] px-5 py-3 text-[11px] text-zinc-400 flex flex-wrap items-center justify-between gap-4 select-none">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="font-semibold text-zinc-200">Aegis CI/CD Toolbox</span>
+          <span className="text-zinc-700">·</span>
+          <button
+            type="button"
+            onClick={() => setShowAboutModal(true)}
+            className="px-2 py-0.5 rounded bg-[#12141a] hover:bg-[#191c24] border border-[#232630] font-mono text-[10px] text-teal-400 transition"
+          >
+            Apache License 2.0
+          </button>
+          <span className="text-zinc-700">·</span>
+          <span>
+            Créé par{' '}
+            <a
+              href="https://github.com/hrmonic"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-zinc-200 hover:text-teal-300 underline decoration-zinc-700 underline-offset-2 transition"
+            >
+              Réda Touzani (@hrmonic)
+            </a>
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="https://paypal.me/hrmonic"
+            target="_blank"
+            rel="noreferrer"
+            className="px-2.5 py-0.5 rounded bg-[#12141a] hover:bg-[#1a1d26] border border-[#242730] text-zinc-300 hover:text-teal-300 font-medium transition"
+          >
+            Soutenir le projet ↗
+          </a>
+          <button
+            type="button"
+            onClick={() => setShowAboutModal(true)}
+            className="px-2.5 py-0.5 rounded bg-[#171920] hover:bg-[#222530] border border-[#2a2d3a] text-zinc-200 font-medium transition"
+          >
+            Crédits & Licence
+          </button>
+        </div>
+      </footer>
+
+      {/* =====================================================================
+          ABOUT, APACHE 2.0 LICENSE & CREDITS MODAL
+      ===================================================================== */}
+      {showAboutModal && (
+        <div
+          onClick={() => setShowAboutModal(false)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-xl w-full rounded-lg bg-[#101115] border border-[#252832] shadow-2xl overflow-hidden"
+          >
+            <div className="px-5 py-3.5 bg-[#0c0d10] border-b border-[#22242c] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2 h-2 rounded-full bg-teal-400" />
+                <h3 className="font-semibold text-sm text-zinc-100">
+                  Crédits & Licence Open Source
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAboutModal(false)}
+                className="text-zinc-400 hover:text-zinc-100 text-xs"
+              >
+                Fermer ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              {/* Creator Card */}
+              <div className="p-4 rounded-md bg-[#0c0d10] border border-[#1f222b] space-y-2">
+                <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                  Créateur & Auteur
+                </div>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <div className="text-sm font-semibold text-zinc-100">Réda Touzani</div>
+                    <div className="text-[11px] font-mono text-zinc-400 mt-0.5">
+                      https://github.com/hrmonic
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="https://github.com/hrmonic"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 rounded bg-[#161820] hover:bg-[#1f222d] border border-[#272a36] text-zinc-200 font-medium transition"
+                    >
+                      GitHub @hrmonic ↗
+                    </a>
+                    <a
+                      href="https://paypal.me/hrmonic"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 rounded bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/40 text-teal-200 font-medium transition"
+                    >
+                      Contribuer / Soutenir ↗
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Open Source License Card */}
+              <div className="p-4 rounded-md bg-[#0c0d10] border border-[#1f222b] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                    Licence Open Source
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-[#151820] border border-[#242834] font-mono text-[11px] text-zinc-200">
+                    Apache License 2.0
+                  </span>
+                </div>
+                <pre className="p-3 rounded bg-[#08090b] border border-[#1a1c23] font-mono text-[11px] text-zinc-400 whitespace-pre-wrap leading-relaxed max-h-36 overflow-y-auto">
+{`Copyright 2026 Réda Touzani (https://github.com/hrmonic)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.`}
+                </pre>
               </div>
             </div>
           </div>
