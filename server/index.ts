@@ -15,6 +15,15 @@ import {
   generateGitHubActionsWorkflow,
   generateHardenedDockerfile,
 } from './pipelineTemplates.ts';
+import {
+  resolveGitHubToken,
+  inspectLocalGitStatus,
+  configureLocalGitRepo,
+  commitAndPushChanges,
+  githubApiRequest,
+  type GitHubRepoItem,
+  type GitHubUserProfile,
+} from './githubService.ts';
 import type { StackId, E2EESyncEnvelope } from '../src/types/toolbox.ts';
 
 const app = express();
@@ -516,6 +525,322 @@ app.post('/api/sync/vault', (req, res) => {
   } catch (err) {
     res.status(500).json({
       error: err instanceof Error ? err.message : 'Erreur stockage coffre E2EE',
+    });
+  }
+});
+
+// ============================================================================
+// 5. GITHUB AUTHENTICATION, REPOSITORY MANAGER, COMMIT, PUSH & PULL REQUESTS
+// ============================================================================
+
+app.post('/api/git/status', (req, res) => {
+  try {
+    const projectPath = req.body?.projectPath || DEFAULT_TARGET_DIR;
+    const status = inspectLocalGitStatus(projectPath);
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur lecture statut Git local',
+    });
+  }
+});
+
+app.post('/api/git/config', (req, res) => {
+  try {
+    const projectPath = req.body?.projectPath || DEFAULT_TARGET_DIR;
+    const result = configureLocalGitRepo(projectPath, {
+      initIfMissing: Boolean(req.body?.initIfMissing),
+      defaultBranch: req.body?.defaultBranch,
+      userName: req.body?.userName,
+      userEmail: req.body?.userEmail,
+      remoteOriginUrl: req.body?.remoteOriginUrl,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : 'Erreur configuration Git',
+    });
+  }
+});
+
+app.post('/api/git/commit-push', (req, res) => {
+  try {
+    const projectPath = req.body?.projectPath || DEFAULT_TARGET_DIR;
+    const result = commitAndPushChanges(projectPath, {
+      branchName: req.body?.branchName,
+      createNewBranch: Boolean(req.body?.createNewBranch),
+      commitMessage: req.body?.commitMessage || 'fix(ci-cd): apply Aegis patches',
+      commitDescription: req.body?.commitDescription,
+      filesToStage: req.body?.filesToStage,
+      pushToOrigin: Boolean(req.body?.pushToOrigin),
+      githubToken: req.body?.githubToken,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err instanceof Error ? err.message : 'Erreur lors du commit / push Git',
+    });
+  }
+});
+
+app.post('/api/github/auth', async (req, res) => {
+  try {
+    const { token, source } = resolveGitHubToken(req.body?.token);
+    if (!token || !source) {
+      res.json({
+        authenticated: false,
+        error: 'Aucun jeton GitHub fourni et GitHub CLI (`gh auth login`) non détecté.',
+      });
+      return;
+    }
+
+    const user = await githubApiRequest<Omit<GitHubUserProfile, 'authSource'>>('/user', token);
+    res.json({
+      authenticated: true,
+      source,
+      user: {
+        ...user,
+        authSource: source,
+      },
+    });
+  } catch (err) {
+    res.status(401).json({
+      authenticated: false,
+      error: err instanceof Error ? err.message : 'Échec authentification GitHub',
+    });
+  }
+});
+
+app.post('/api/github/repos/list', async (req, res) => {
+  try {
+    const { token } = resolveGitHubToken(req.body?.token);
+    if (!token) {
+      res.status(401).json({ error: 'Authentification GitHub requise.' });
+      return;
+    }
+    const repos = await githubApiRequest<GitHubRepoItem[]>(
+      '/user/repos?sort=updated&direction=desc&per_page=60&affiliation=owner,collaborator,organization_member',
+      token
+    );
+    res.json({ repos });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur récupération des dépôts GitHub',
+    });
+  }
+});
+
+app.post('/api/github/repos/create', async (req, res) => {
+  try {
+    const { token } = resolveGitHubToken(req.body?.token);
+    if (!token) {
+      res.status(401).json({ error: 'Authentification GitHub requise.' });
+      return;
+    }
+
+    const {
+      name,
+      description,
+      isPrivate,
+      homepage,
+      autoInit,
+      gitignoreTemplate,
+      licenseTemplate,
+      hasIssues,
+      hasWiki,
+      hasProjects,
+      topics,
+      linkToProjectPath,
+      pushInitialCode,
+    } = req.body || {};
+
+    if (!name || !String(name).trim()) {
+      res.status(400).json({ error: 'Le nom du dépôt est obligatoire.' });
+      return;
+    }
+
+    const created = await githubApiRequest<GitHubRepoItem>('/user/repos', token, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: String(name).trim(),
+        description: description ? String(description).trim() : '',
+        private: Boolean(isPrivate),
+        homepage: homepage ? String(homepage).trim() : undefined,
+        auto_init: Boolean(autoInit),
+        gitignore_template: gitignoreTemplate || undefined,
+        license_template: licenseTemplate || undefined,
+        has_issues: hasIssues !== undefined ? Boolean(hasIssues) : true,
+        has_wiki: hasWiki !== undefined ? Boolean(hasWiki) : true,
+        has_projects: hasProjects !== undefined ? Boolean(hasProjects) : true,
+      }),
+    });
+
+    if (Array.isArray(topics) && topics.length > 0) {
+      const cleanTopics = topics
+        .map((t: string) => String(t).toLowerCase().trim().replace(/[^a-z0-9-]/g, '-'))
+        .filter(Boolean);
+      if (cleanTopics.length > 0) {
+        try {
+          await githubApiRequest(`/repos/${created.full_name}/topics`, token, {
+            method: 'PUT',
+            body: JSON.stringify({ names: cleanTopics }),
+          });
+        } catch {
+          // Non-blocking if topics update fails
+        }
+      }
+    }
+
+    let linkedStatus = null;
+    if (linkToProjectPath) {
+      const cfg = configureLocalGitRepo(linkToProjectPath, {
+        initIfMissing: true,
+        defaultBranch: created.default_branch || 'main',
+        remoteOriginUrl: created.clone_url,
+      });
+      linkedStatus = cfg.status;
+
+      if (pushInitialCode) {
+        const pushRes = commitAndPushChanges(linkToProjectPath, {
+          branchName: created.default_branch || 'main',
+          commitMessage: 'chore: initial commit via Aegis CI/CD Toolbox',
+          pushToOrigin: true,
+          githubToken: token,
+        });
+        linkedStatus = pushRes.status;
+      }
+    }
+
+    res.json({
+      created: true,
+      repo: created,
+      gitStatus: linkedStatus,
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur création du dépôt GitHub',
+    });
+  }
+});
+
+app.post('/api/github/repos/update', async (req, res) => {
+  try {
+    const { token } = resolveGitHubToken(req.body?.token);
+    if (!token) {
+      res.status(401).json({ error: 'Authentification GitHub requise.' });
+      return;
+    }
+
+    const { owner, repo, description, isPrivate, defaultBranch, homepage, hasIssues, hasWiki, hasProjects, topics } =
+      req.body || {};
+
+    if (!owner || !repo) {
+      res.status(400).json({ error: 'Paramètres owner et repo requis.' });
+      return;
+    }
+
+    const updated = await githubApiRequest<GitHubRepoItem>(`/repos/${owner}/${repo}`, token, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        description: description !== undefined ? String(description) : undefined,
+        private: isPrivate !== undefined ? Boolean(isPrivate) : undefined,
+        default_branch: defaultBranch || undefined,
+        homepage: homepage !== undefined ? String(homepage) : undefined,
+        has_issues: hasIssues !== undefined ? Boolean(hasIssues) : undefined,
+        has_wiki: hasWiki !== undefined ? Boolean(hasWiki) : undefined,
+        has_projects: hasProjects !== undefined ? Boolean(hasProjects) : undefined,
+      }),
+    });
+
+    if (Array.isArray(topics)) {
+      const cleanTopics = topics
+        .map((t: string) => String(t).toLowerCase().trim().replace(/[^a-z0-9-]/g, '-'))
+        .filter(Boolean);
+      await githubApiRequest(`/repos/${owner}/${repo}/topics`, token, {
+        method: 'PUT',
+        body: JSON.stringify({ names: cleanTopics }),
+      });
+      updated.topics = cleanTopics;
+    }
+
+    res.json({ updated: true, repo: updated });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur mise à jour des paramètres du dépôt',
+    });
+  }
+});
+
+app.post('/api/github/pulls/list', async (req, res) => {
+  try {
+    const { token } = resolveGitHubToken(req.body?.token);
+    if (!token) {
+      res.status(401).json({ error: 'Authentification GitHub requise.' });
+      return;
+    }
+    const { owner, repo } = req.body || {};
+    if (!owner || !repo) {
+      res.status(400).json({ error: 'Paramètres owner et repo requis.' });
+      return;
+    }
+    const pulls = await githubApiRequest<
+      {
+        id: number;
+        number: number;
+        title: string;
+        html_url: string;
+        state: string;
+        draft: boolean;
+        created_at: string;
+        head: { ref: string };
+        base: { ref: string };
+        user: { login: string };
+      }[]
+    >(`/repos/${owner}/${repo}/pulls?state=open&per_page=20`, token);
+    res.json({ pulls });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur lecture des Pull Requests',
+    });
+  }
+});
+
+app.post('/api/github/pulls/create', async (req, res) => {
+  try {
+    const { token } = resolveGitHubToken(req.body?.token);
+    if (!token) {
+      res.status(401).json({ error: 'Authentification GitHub requise.' });
+      return;
+    }
+    const { owner, repo, title, body, head, base, draft } = req.body || {};
+    if (!owner || !repo || !title || !head || !base) {
+      res.status(400).json({ error: 'Paramètres owner, repo, title, head et base requis.' });
+      return;
+    }
+
+    const pr = await githubApiRequest<{
+      id: number;
+      number: number;
+      title: string;
+      html_url: string;
+      state: string;
+    }>(`/repos/${owner}/${repo}/pulls`, token, {
+      method: 'POST',
+      body: JSON.stringify({
+        title: String(title).trim(),
+        body: body ? String(body) : '',
+        head: String(head).trim(),
+        base: String(base).trim(),
+        draft: Boolean(draft),
+      }),
+    });
+
+    res.json({ created: true, pullRequest: pr });
+  } catch (err) {
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Erreur création de la Pull Request GitHub',
     });
   }
 });

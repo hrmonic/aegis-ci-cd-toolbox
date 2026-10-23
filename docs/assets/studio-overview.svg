@@ -1,0 +1,360 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 860" width="100%" height="100%" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#090a0c"/>
+      <stop offset="100%" stop-color="#07080a"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-2%" y="-2%" width="104%" height="108%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Outer Window Frame -->
+  <rect width="1440" height="860" rx="12" fill="url(#bgGrad)" stroke="#22242c" stroke-width="2"/>
+
+  <!-- Top Minimalist Navigation Bar (#07080a) -->
+  <rect x="1" y="1" width="1438" height="48" rx="11" fill="#07080a"/>
+  <line x1="1" y1="49" x2="1439" y2="49" stroke="#1c1e24" stroke-width="1"/>
+
+  <!-- Left Tabs with 2px #2dd4bf Active Indicator -->
+  <g font-size="12" font-weight="500">
+    <text x="28" y="30" fill="#f4f4f5" font-weight="600">Overview</text>
+    <rect x="28" y="47" width="56" height="2" fill="#2dd4bf"/>
+
+    <text x="110" y="30" fill="#a1a1aa">Diagnostics</text>
+    <circle cx="184" cy="26" r="3" fill="#fbbf24"/>
+
+    <text x="210" y="30" fill="#a1a1aa">Task Runner</text>
+    <circle cx="287" cy="26" r="3" fill="#2dd4bf"/>
+
+    <text x="312" y="30" fill="#a1a1aa">Pipelines</text>
+    <text x="388" y="30" fill="#a1a1aa">AI Engine</text>
+    <text x="466" y="30" fill="#a1a1aa">Sync &amp; Vault</text>
+    <text x="562" y="30" fill="#a1a1aa">Activity</text>
+    <text x="630" y="30" fill="#a1a1aa">Docs &amp; Rules</text>
+  </g>
+
+  <!-- Center Project Title -->
+  <text x="720" y="30" text-anchor="middle" font-size="12" font-weight="600" fill="#f4f4f5">
+    aegis-ci-cd-toolbox <tspan fill="#52525b">—</tspan> <tspan fill="#a1a1aa" font-weight="400">All checks passing (100/100)</tspan>
+  </text>
+
+  <!-- Right Header Controls -->
+  <g transform="translate(1150, 12)">
+    <rect x="0" y="0" width="64" height="24" rx="4" fill="#121318" stroke="#23252e"/>
+    <text x="32" y="16" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#a1a1aa">Ctrl+K</text>
+
+    <rect x="74" y="0" width="116" height="24" rx="4" fill="#18191e" stroke="#262830"/>
+    <text x="132" y="16" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="600" fill="#e4e4e7">OPEN PROJECT</text>
+
+    <rect x="200" y="0" width="26" height="24" rx="4" fill="#121318" stroke="#23252e"/>
+    <text x="213" y="16" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#a1a1aa">&gt;_</text>
+
+    <rect x="234" y="0" width="26" height="24" rx="4" fill="#121318" stroke="#23252e"/>
+    <circle cx="252" cy="7" r="2.5" fill="#2dd4bf"/>
+    <text x="247" y="16" text-anchor="middle" font-size="11" fill="#a1a1aa">⚙</text>
+  </g>
+
+  <!-- Sub-Toolbar (#0c0d10) -->
+  <rect x="1" y="50" width="1438" height="44" fill="#0c0d10"/>
+  <line x1="1" y1="94" x2="1439" y2="94" stroke="#191b22" stroke-width="1"/>
+
+  <g transform="translate(28, 60)" font-size="11" font-weight="500">
+    <rect x="0" y="0" width="68" height="24" rx="5" fill="#15161b" stroke="#252730"/>
+    <text x="34" y="16" text-anchor="middle" fill="#e4e4e7">▶ Scan</text>
+
+    <rect x="76" y="0" width="96" height="24" rx="5" fill="#1f2229" stroke="#323642"/>
+    <text x="124" y="16" text-anchor="middle" fill="#f4f4f5">⚡ Fix All (0)</text>
+
+    <rect x="180" y="0" width="70" height="24" rx="5" fill="#15161b" stroke="#252730"/>
+    <text x="215" y="16" text-anchor="middle" fill="#d4d4d8">↺ Undo</text>
+
+    <rect x="258" y="0" width="92" height="24" rx="5" fill="#15161b" stroke="#252730"/>
+    <text x="304" y="16" text-anchor="middle" fill="#d4d4d8">◷ History (4)</text>
+
+    <rect x="358" y="0" width="96" height="24" rx="5" fill="#15161b" stroke="#252730"/>
+    <text x="406" y="16" text-anchor="middle" fill="#d4d4d8">&lt;/&gt; VS Code</text>
+
+    <rect x="462" y="0" width="96" height="24" rx="5" fill="#15161b" stroke="#252730"/>
+    <text x="510" y="16" text-anchor="middle" fill="#d4d4d8">⇩ Export .md</text>
+
+    <rect x="566" y="0" width="84" height="24" rx="5" fill="#15161b" stroke="#252730"/>
+    <text x="608" y="16" text-anchor="middle" fill="#d4d4d8">✓ Self-Test</text>
+  </g>
+
+  <!-- Right Telemetry Strip in Sub-Toolbar -->
+  <g transform="translate(940, 76)" font-family="JetBrains Mono, monospace" font-size="11" fill="#71717a">
+    <circle cx="0" cy="-4" r="3" fill="#34d399"/>
+    <text x="10" y="0" fill="#d4d4d8">main</text>
+    <text x="48" y="0">·</text>
+    <text x="62" y="0">42 files (21ms)</text>
+    <text x="172" y="0">·</text>
+    <text x="186" y="0">Flow: ACTIVE-REVIEW</text>
+    <text x="330" y="0">·</text>
+    <circle cx="346" cy="-4" r="3" fill="#34d399"/>
+    <text x="356" y="0" fill="#d4d4d8">Online / E2EE</text>
+  </g>
+
+  <!-- 4-Column Metric Strip -->
+  <g transform="translate(28, 114)" filter="url(#cardShadow)">
+    <rect x="0" y="0" width="1384" height="78" rx="8" fill="#101115" stroke="#22242c"/>
+    <line x1="346" y1="0" x2="346" y2="78" stroke="#1e2028"/>
+    <line x1="692" y1="0" x2="692" y2="78" stroke="#1e2028"/>
+    <line x1="1038" y1="0" x2="1038" y2="78" stroke="#1e2028"/>
+
+    <!-- KPI 1 -->
+    <text x="20" y="24" font-size="10" font-weight="600" fill="#71717a" letter-spacing="0.8">HEALTH SCORE</text>
+    <text x="20" y="56" font-family="JetBrains Mono, monospace" font-size="26" font-weight="600" fill="#34d399">100<tspan font-size="13" fill="#71717a">/100</tspan></text>
+    <circle cx="320" cy="40" r="4" fill="#34d399"/>
+
+    <!-- KPI 2 -->
+    <text x="366" y="24" font-size="10" font-weight="600" fill="#71717a" letter-spacing="0.8">AI-SAFE READINESS</text>
+    <text x="366" y="56" font-family="JetBrains Mono, monospace" font-size="26" font-weight="600" fill="#f4f4f5">100<tspan font-size="13" fill="#71717a">%</tspan></text>
+    <text x="585" y="52" font-family="JetBrains Mono, monospace" font-size="11" fill="#71717a">Zero-Bug Index</text>
+
+    <!-- KPI 3 -->
+    <text x="712" y="24" font-size="10" font-weight="600" fill="#71717a" letter-spacing="0.8">OPEN DIAGNOSTICS</text>
+    <text x="712" y="56" font-family="JetBrains Mono, monospace" font-size="26" font-weight="600" fill="#f4f4f5">0</text>
+    <text x="895" y="52" font-family="JetBrains Mono, monospace" font-size="11" fill="#34d399">35/35 Rules Passing</text>
+
+    <!-- KPI 4 -->
+    <text x="1058" y="24" font-size="10" font-weight="600" fill="#71717a" letter-spacing="0.8">AI &amp; AST ENGINE</text>
+    <text x="1058" y="54" font-family="JetBrains Mono, monospace" font-size="14" font-weight="600" fill="#e4e4e7">Hybrid + Local Ollama</text>
+    <text x="1290" y="52" font-family="JetBrains Mono, monospace" font-size="11" fill="#2dd4bf">AES-256-GCM</text>
+  </g>
+
+  <!-- Left 8 Cols: Audit Breakdown by Category -->
+  <g transform="translate(28, 212)" filter="url(#cardShadow)">
+    <rect x="0" y="0" width="905" height="278" rx="8" fill="#101115" stroke="#22242c"/>
+    <rect x="1" y="1" width="903" height="38" rx="7" fill="#0c0d10"/>
+    <line x1="0" y1="39" x2="905" y2="39" stroke="#22242c"/>
+    <text x="18" y="24" font-size="12" font-weight="600" fill="#e4e4e7">Audit Breakdown by Category</text>
+    <text x="887" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" fill="#71717a">35 active diagnostic rules · 6 verification layers</text>
+
+    <!-- 6 Category Rows -->
+    <g transform="translate(0, 40)" font-size="12">
+      <!-- Row 1 -->
+      <circle cx="22" cy="20" r="3.5" fill="#34d399"/>
+      <text x="38" y="24" font-weight="500" fill="#e4e4e7">Pipelines CI/CD (CICD-001..007)</text>
+      <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#1d1f27"/>
+      <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#34d399" opacity="0.85"/>
+      <text x="790" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#a1a1aa">Passing</text>
+      <text x="860" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#f4f4f5">100%</text>
+      <line x1="0" y1="40" x2="905" y2="40" stroke="#1a1c23"/>
+
+      <!-- Row 2 -->
+      <g transform="translate(0, 40)">
+        <circle cx="22" cy="20" r="3.5" fill="#34d399"/>
+        <text x="38" y="24" font-weight="500" fill="#e4e4e7">Sécurité &amp; Secrets DevSecOps (SEC-001..008)</text>
+        <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#1d1f27"/>
+        <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#34d399" opacity="0.85"/>
+        <text x="790" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#a1a1aa">Passing</text>
+        <text x="860" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#f4f4f5">100%</text>
+        <line x1="0" y1="40" x2="905" y2="40" stroke="#1a1c23"/>
+      </g>
+
+      <!-- Row 3 -->
+      <g transform="translate(0, 80)">
+        <circle cx="22" cy="20" r="3.5" fill="#34d399"/>
+        <text x="38" y="24" font-weight="500" fill="#e4e4e7">Robustesse Code IA &amp; Typage (AI-QUAL-001..006)</text>
+        <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#1d1f27"/>
+        <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#34d399" opacity="0.85"/>
+        <text x="790" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#a1a1aa">Passing</text>
+        <text x="860" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#f4f4f5">100%</text>
+        <line x1="0" y1="40" x2="905" y2="40" stroke="#1a1c23"/>
+      </g>
+
+      <!-- Row 4 -->
+      <g transform="translate(0, 120)">
+        <circle cx="22" cy="20" r="3.5" fill="#34d399"/>
+        <text x="38" y="24" font-weight="500" fill="#e4e4e7">Couverture &amp; Suite de Tests (TEST-001..003)</text>
+        <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#1d1f27"/>
+        <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#34d399" opacity="0.85"/>
+        <text x="790" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#a1a1aa">Passing</text>
+        <text x="860" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#f4f4f5">100%</text>
+        <line x1="0" y1="40" x2="905" y2="40" stroke="#1a1c23"/>
+      </g>
+
+      <!-- Row 5 -->
+      <g transform="translate(0, 160)">
+        <circle cx="22" cy="20" r="3.5" fill="#34d399"/>
+        <text x="38" y="24" font-weight="500" fill="#e4e4e7">Build, Lockfiles &amp; Dépendances (DEPS-001..004)</text>
+        <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#1d1f27"/>
+        <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#34d399" opacity="0.85"/>
+        <text x="790" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#a1a1aa">Passing</text>
+        <text x="860" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#f4f4f5">100%</text>
+        <line x1="0" y1="40" x2="905" y2="40" stroke="#1a1c23"/>
+      </g>
+
+      <!-- Row 6 -->
+      <g transform="translate(0, 200)">
+        <circle cx="22" cy="20" r="3.5" fill="#34d399"/>
+        <text x="38" y="24" font-weight="500" fill="#e4e4e7">Docker &amp; Durcissement Conteneurs (DOCKER-001..005)</text>
+        <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#1d1f27"/>
+        <rect x="330" y="17" width="340" height="5" rx="2.5" fill="#34d399" opacity="0.85"/>
+        <text x="790" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#a1a1aa">Passing</text>
+        <text x="860" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" fill="#f4f4f5">100%</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Left Bottom: Surgical Diff & Complexity Hotspots Card -->
+  <g transform="translate(28, 510)" filter="url(#cardShadow)">
+    <rect x="0" y="0" width="905" height="284" rx="8" fill="#101115" stroke="#22242c"/>
+    <rect x="1" y="1" width="903" height="38" rx="7" fill="#0c0d10"/>
+    <line x1="0" y1="39" x2="905" y2="39" stroke="#22242c"/>
+    <text x="18" y="24" font-size="12" font-weight="600" fill="#e4e4e7">Surgical Auto-Fix Diff Preview &amp; Cyclomatic Complexity Hotspots</text>
+    <text x="887" y="24" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" fill="#2dd4bf">8,420 LOC · 42 Files · 1-Click Rollback Ready</text>
+
+    <!-- Unified Diff Preview Box -->
+    <g transform="translate(18, 54)" font-family="JetBrains Mono, monospace" font-size="11">
+      <rect x="0" y="0" width="869" height="122" rx="6" fill="#08090b" stroke="#1e2028"/>
+      <text x="14" y="22" fill="#71717a">--- a/.github/workflows/ci.yml   (Rule CICD-002 &amp; CICD-005 — Confidence 98%)</text>
+      <text x="14" y="40" fill="#71717a">+++ b/.github/workflows/ci.yml   (Deterministic AST Patch + Backup Created)</text>
+      <rect x="6" y="48" width="857" height="20" rx="3" fill="#ef4444" fill-opacity="0.12"/>
+      <text x="14" y="62" fill="#fca5a5">-      - uses: actions/checkout@v2</text>
+      <rect x="6" y="72" width="857" height="40" rx="3" fill="#10b981" fill-opacity="0.12"/>
+      <text x="14" y="87" fill="#6ee7b7">+permissions: { contents: read }</text>
+      <text x="14" y="105" fill="#6ee7b7">+      - uses: actions/checkout@v4</text>
+    </g>
+
+    <!-- Hotspots Sub-rows -->
+    <g transform="translate(18, 192)" font-family="JetBrains Mono, monospace" font-size="11">
+      <circle cx="8" cy="10" r="3" fill="#34d399"/>
+      <text x="22" y="14" fill="#e4e4e7">server/scanner.ts</text>
+      <text x="460" y="14" fill="#71717a">328 lines</text>
+      <text x="610" y="14" fill="#d4d4d8">complexity: 24</text>
+      <text x="780" y="14" fill="#2dd4bf">[Open in VS Code]</text>
+
+      <line x1="0" y1="28" x2="869" y2="28" stroke="#1a1c23"/>
+
+      <circle cx="8" cy="46" r="3" fill="#34d399"/>
+      <text x="22" y="50" fill="#e4e4e7">server/analyzers/securityAnalyzer.ts</text>
+      <text x="460" y="50" fill="#71717a">384 lines</text>
+      <text x="610" y="50" fill="#d4d4d8">complexity: 29</text>
+      <text x="780" y="50" fill="#2dd4bf">[Open in VS Code]</text>
+
+      <line x1="0" y1="64" x2="869" y2="64" stroke="#1a1c23"/>
+
+      <circle cx="8" cy="80" r="3" fill="#34d399"/>
+      <text x="22" y="84" fill="#e4e4e7">src/services/e2eeCrypto.ts</text>
+      <text x="460" y="84" fill="#71717a">165 lines</text>
+      <text x="610" y="84" fill="#d4d4d8">complexity: 11</text>
+      <text x="780" y="84" fill="#2dd4bf">[Open in VS Code]</text>
+    </g>
+  </g>
+
+  <!-- Right 4 Cols: Target Workspace, Stacks, Language Breakdown & Live Runner -->
+  <g transform="translate(953, 212)" filter="url(#cardShadow)">
+    <rect x="0" y="0" width="459" height="582" rx="8" fill="#101115" stroke="#22242c"/>
+    <rect x="1" y="1" width="457" height="38" rx="7" fill="#0c0d10"/>
+    <line x1="0" y1="39" x2="459" y2="39" stroke="#22242c"/>
+    <text x="18" y="24" font-size="12" font-weight="600" fill="#e4e4e7">Target Workspace (Zero-Footprint)</text>
+    <text x="440" y="24" text-anchor="end" font-size="11" fill="#2dd4bf">VS Code · Explorer · Change...</text>
+
+    <!-- Directory Path -->
+    <g transform="translate(18, 56)">
+      <text x="0" y="0" font-size="10" font-weight="600" fill="#71717a" letter-spacing="0.8">EXTERNAL TARGET DIRECTORY</text>
+      <rect x="0" y="10" width="423" height="30" rx="5" fill="#090a0c" stroke="#1f222b"/>
+      <text x="12" y="29" font-family="JetBrains Mono, monospace" font-size="11" fill="#e4e4e7">F:\APP\aegis-ci-cd-toolbox</text>
+    </g>
+
+    <!-- Active Stacks -->
+    <g transform="translate(18, 118)">
+      <text x="0" y="0" font-size="10" font-weight="600" fill="#71717a" letter-spacing="0.8">DETECTED &amp; ACTIVE STACKS (10 SUPPORTED)</text>
+      <g transform="translate(0, 12)" font-family="JetBrains Mono, monospace" font-size="11" fill="#d4d4d8">
+        <rect x="0" y="0" width="66" height="24" rx="4" fill="#171920" stroke="#252832"/>
+        <text x="33" y="16" text-anchor="middle">nodejs</text>
+
+        <rect x="74" y="0" width="90" height="24" rx="4" fill="#171920" stroke="#252832"/>
+        <text x="119" y="16" text-anchor="middle">typescript</text>
+
+        <rect x="172" y="0" width="102" height="24" rx="4" fill="#171920" stroke="#252832"/>
+        <text x="223" y="16" text-anchor="middle">react-nextjs</text>
+
+        <rect x="282" y="0" width="64" height="24" rx="4" fill="#171920" stroke="#252832"/>
+        <text x="314" y="16" text-anchor="middle">docker</text>
+
+        <rect x="0" y="32" width="114" height="24" rx="4" fill="#171920" stroke="#252832"/>
+        <text x="57" y="48" text-anchor="middle">github-actions</text>
+
+        <rect x="122" y="32" width="66" height="24" rx="4" fill="#121318" stroke="#1e2028"/>
+        <text x="155" y="48" text-anchor="middle" fill="#71717a">python</text>
+
+        <rect x="196" y="32" width="54" height="24" rx="4" fill="#121318" stroke="#1e2028"/>
+        <text x="223" y="48" text-anchor="middle" fill="#71717a">rust</text>
+
+        <rect x="258" y="32" width="92" height="24" rx="4" fill="#121318" stroke="#1e2028"/>
+        <text x="304" y="48" text-anchor="middle" fill="#71717a">php-symfony</text>
+      </g>
+    </g>
+
+    <!-- Language Distribution -->
+    <g transform="translate(18, 212)">
+      <line x1="0" y1="-12" x2="423" y2="-12" stroke="#1c1e26"/>
+      <text x="0" y="6" font-size="10" font-weight="600" fill="#71717a" letter-spacing="0.8">LANGUAGE DISTRIBUTION (35 RULES ACTIVE)</text>
+
+      <g transform="translate(0, 24)" font-family="JetBrains Mono, monospace" font-size="11">
+        <text x="0" y="0" fill="#d4d4d8">TypeScript / TSX</text>
+        <text x="423" y="0" text-anchor="end" fill="#71717a">34 files · 7,890 LOC (93%)</text>
+        <rect x="0" y="8" width="423" height="4" rx="2" fill="#1a1c23"/>
+        <rect x="0" y="8" width="393" height="4" rx="2" fill="#2dd4bf" opacity="0.8"/>
+
+        <text x="0" y="34" fill="#d4d4d8">JavaScript / Node CLI</text>
+        <text x="423" y="34" text-anchor="end" fill="#71717a">4 files · 340 LOC (4%)</text>
+        <rect x="0" y="42" width="423" height="4" rx="2" fill="#1a1c23"/>
+        <rect x="0" y="42" width="32" height="4" rx="2" fill="#2dd4bf" opacity="0.8"/>
+
+        <text x="0" y="68" fill="#d4d4d8">YAML / Docker / Config</text>
+        <text x="423" y="68" text-anchor="end" fill="#71717a">4 files · 190 LOC (3%)</text>
+        <rect x="0" y="76" width="423" height="4" rx="2" fill="#1a1c23"/>
+        <rect x="0" y="76" width="24" height="4" rx="2" fill="#2dd4bf" opacity="0.8"/>
+      </g>
+    </g>
+
+    <!-- Quick Executable Project Checks -->
+    <g transform="translate(18, 344)">
+      <line x1="0" y1="-12" x2="423" y2="-12" stroke="#1c1e26"/>
+      <text x="0" y="6" font-size="10" font-weight="600" fill="#71717a" letter-spacing="0.8">QUICK EXECUTABLE PROJECT CHECKS</text>
+      <g transform="translate(0, 18)" font-family="JetBrains Mono, monospace" font-size="11" fill="#d4d4d8">
+        <rect x="0" y="0" width="134" height="26" rx="4" fill="#15171d" stroke="#252832"/>
+        <text x="67" y="17" text-anchor="middle">▶ npm : test</text>
+
+        <rect x="142" y="0" width="134" height="26" rx="4" fill="#15171d" stroke="#252832"/>
+        <text x="209" y="17" text-anchor="middle">▶ npm : lint</text>
+
+        <rect x="284" y="0" width="139" height="26" rx="4" fill="#15171d" stroke="#252832"/>
+        <text x="353" y="17" text-anchor="middle">▶ tsc --noEmit</text>
+
+        <rect x="0" y="34" width="206" height="26" rx="4" fill="#15171d" stroke="#252832"/>
+        <text x="103" y="51" text-anchor="middle">▶ git status --short</text>
+
+        <rect x="214" y="34" width="209" height="26" rx="4" fill="#15171d" stroke="#252832"/>
+        <text x="318" y="51" text-anchor="middle">▶ npm : build</text>
+      </g>
+    </g>
+
+    <!-- Hybrid AI & Security Status Box -->
+    <g transform="translate(18, 456)">
+      <line x1="0" y1="-12" x2="423" y2="-12" stroke="#1c1e26"/>
+      <rect x="0" y="0" width="423" height="106" rx="6" fill="#090a0c" stroke="#1e2028"/>
+      <text x="14" y="22" font-size="11" font-weight="600" fill="#e4e4e7">Hybrid AI Routing &amp; E2EE Vault Status</text>
+      <text x="14" y="44" font-family="JetBrains Mono, monospace" font-size="11" fill="#a1a1aa">• Cloud Connectors : Google Gemini 2.5 · OpenAI GPT-4o · Free APIs</text>
+      <text x="14" y="64" font-family="JetBrains Mono, monospace" font-size="11" fill="#a1a1aa">• 100% Air-Gapped  : Ollama Local (localhost:11434) + Offline AST</text>
+      <text x="14" y="84" font-family="JetBrains Mono, monospace" font-size="11" fill="#2dd4bf">• Multi-Device Sync: Zero-Knowledge AES-256-GCM (PBKDF2 250k)</text>
+    </g>
+  </g>
+
+  <!-- Bottom Persistent Credits & License Bar -->
+  <rect x="1" y="814" width="1438" height="45" rx="11" fill="#07080a"/>
+  <line x1="1" y1="814" x2="1439" y2="814" stroke="#191b22" stroke-width="1"/>
+  <text x="28" y="841" font-size="11" fill="#a1a1aa">
+    <tspan fill="#e4e4e7" font-weight="600">Aegis CI/CD Toolbox</tspan>  ·  <tspan fill="#2dd4bf" font-family="JetBrains Mono, monospace">Apache License 2.0</tspan>  ·  Créé par <tspan fill="#f4f4f5" font-weight="500">Réda Touzani (@hrmonic)</tspan>
+  </text>
+  <g transform="translate(1150, 825)" font-size="11" font-weight="500">
+    <rect x="0" y="0" width="146" height="22" rx="4" fill="#12141a" stroke="#242730"/>
+    <text x="73" y="15" text-anchor="middle" fill="#d4d4d8">Documentation (35 Rules)</text>
+    <rect x="154" y="0" width="110" height="22" rx="4" fill="#171920" stroke="#2a2d3a"/>
+    <text x="209" y="15" text-anchor="middle" fill="#2dd4bf">Soutenir &amp; Crédits</text>
+  </g>
+</svg>

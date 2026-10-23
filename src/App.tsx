@@ -67,6 +67,7 @@ import { E2EESyncPanel } from './components/E2EESyncPanel';
 import { AdaptiveNotificationsPanel } from './components/AdaptiveNotificationsPanel';
 import { UxExperienceLabModal } from './components/UxExperienceLabModal';
 import { FolderPickerModal } from './components/FolderPickerModal';
+import { DocumentationPanel } from './components/DocumentationPanel';
 
 type StudioTabId =
   | 'overview'
@@ -75,7 +76,8 @@ type StudioTabId =
   | 'pipelines'
   | 'ai-engine'
   | 'vault'
-  | 'activity';
+  | 'activity'
+  | 'docs';
 
 interface SubFolderItem {
   name: string;
@@ -721,6 +723,7 @@ export function App() {
     { id: 'ai-engine', label: 'AI Engine' },
     { id: 'vault', label: 'Sync & Vault' },
     { id: 'activity', label: 'Activity', count: unreadNotifsCount },
+    { id: 'docs', label: 'Docs & Rules' },
   ];
 
   const getSeverityDot = (sev: string, status?: string) => {
@@ -2064,6 +2067,11 @@ export function App() {
             />
           </div>
         )}
+
+        {/* -------------------------------------------------------------------
+            TAB 8: DOCUMENTATION & 35-RULE REFERENCE MATRIX
+        ------------------------------------------------------------------- */}
+        {activeTab === 'docs' && <DocumentationPanel />}
       </main>
 
       {/* =====================================================================
@@ -2312,26 +2320,25 @@ export function App() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href="https://paypal.me/hrmonic"
-            target="_blank"
-            rel="noreferrer"
-            className="px-2.5 py-0.5 rounded bg-[#12141a] hover:bg-[#1a1d26] border border-[#242730] text-zinc-300 hover:text-teal-300 font-medium transition"
+          <button
+            type="button"
+            onClick={() => setActiveTab('docs')}
+            className="px-2.5 py-0.5 rounded bg-[#12141a] hover:bg-[#1a1d26] border border-[#242730] text-zinc-300 hover:text-zinc-100 font-medium transition"
           >
-            Soutenir le projet ↗
-          </a>
+            Documentation (35 Rules)
+          </button>
           <button
             type="button"
             onClick={() => setShowAboutModal(true)}
-            className="px-2.5 py-0.5 rounded bg-[#171920] hover:bg-[#222530] border border-[#2a2d3a] text-zinc-200 font-medium transition"
+            className="px-2.5 py-0.5 rounded bg-[#171920] hover:bg-[#222530] border border-[#2a2d3a] text-teal-300 font-medium transition"
           >
-            Crédits & Licence
+            Soutenir & Crédits
           </button>
         </div>
       </footer>
 
       {/* =====================================================================
-          ABOUT, APACHE 2.0 LICENSE & CREDITS MODAL
+          ABOUT, APACHE 2.0 LICENSE & QR CODE SUPPORT MODAL
       ===================================================================== */}
       {showAboutModal && (
         <div
@@ -2346,7 +2353,7 @@ export function App() {
               <div className="flex items-center gap-2.5">
                 <span className="w-2 h-2 rounded-full bg-teal-400" />
                 <h3 className="font-semibold text-sm text-zinc-100">
-                  Crédits & Licence Open Source
+                  Crédits, Licence Open Source & Soutien
                 </h3>
               </div>
               <button
@@ -2359,34 +2366,52 @@ export function App() {
             </div>
 
             <div className="p-5 space-y-4 text-xs">
-              {/* Creator Card */}
-              <div className="p-4 rounded-md bg-[#0c0d10] border border-[#1f222b] space-y-2">
-                <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
-                  Créateur & Auteur
+              {/* Creator + QR Code Support Card */}
+              <div className="p-4 rounded-md bg-[#0c0d10] border border-[#1f222b] flex flex-col sm:flex-row items-center gap-5">
+                <div className="shrink-0 p-2.5 rounded-lg bg-white border border-zinc-700 shadow-lg">
+                  <img
+                    src="/donate-qr.png"
+                    alt="QR Code de soutien"
+                    className="w-32 h-32 object-contain"
+                  />
                 </div>
-                <div className="flex items-center justify-between gap-4 flex-wrap">
+
+                <div className="space-y-2.5 flex-1">
                   <div>
-                    <div className="text-sm font-semibold text-zinc-100">Réda Touzani</div>
-                    <div className="text-[11px] font-mono text-zinc-400 mt-0.5">
-                      https://github.com/hrmonic
+                    <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                      Créateur & Auteur
                     </div>
+                    <div className="text-base font-semibold text-zinc-100">Réda Touzani</div>
+                    <a
+                      href="https://github.com/hrmonic"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-mono text-teal-400 hover:text-teal-300 underline"
+                    >
+                      https://github.com/hrmonic
+                    </a>
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  <p className="text-zinc-400 leading-relaxed">
+                    Scannez le QR code ci-contre avec votre téléphone pour soutenir directement le développement open-source de <strong className="text-zinc-200">Aegis CI/CD Toolbox</strong>.
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
                     <a
                       href="https://github.com/hrmonic"
                       target="_blank"
                       rel="noreferrer"
                       className="px-3 py-1.5 rounded bg-[#161820] hover:bg-[#1f222d] border border-[#272a36] text-zinc-200 font-medium transition"
                     >
-                      GitHub @hrmonic ↗
+                      Profil GitHub @hrmonic ↗
                     </a>
                     <a
-                      href="https://paypal.me/hrmonic"
+                      href="https://github.com/hrmonic/aegis-ci-cd-toolbox"
                       target="_blank"
                       rel="noreferrer"
-                      className="px-3 py-1.5 rounded bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/40 text-teal-200 font-medium transition"
+                      className="px-3 py-1.5 rounded bg-[#161820] hover:bg-[#1f222d] border border-[#272a36] text-zinc-200 font-medium transition"
                     >
-                      Contribuer / Soutenir ↗
+                      Dépôt GitHub ↗
                     </a>
                   </div>
                 </div>
